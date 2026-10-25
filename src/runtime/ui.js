@@ -58,7 +58,10 @@ const SVG_ALLOWED = new Set([
  */
 export function svg(markup) {
   if (typeof markup !== 'string' || !markup.includes('<svg')) return null;
-  const parsed = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  // Parsed as XML, an <svg> without xmlns is a plain element that draws nothing; inline-HTML markup often leaves it out.
+  let source = /<svg\b[^>]*\sxmlns=/.test(markup) ? markup : markup.replace(/<svg\b/, '<svg xmlns="http://www.w3.org/2000/svg"');
+  if (source.includes('xlink:') && !/\sxmlns:xlink=/.test(source)) source = source.replace(/<svg\b/, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+  const parsed = new DOMParser().parseFromString(source, 'image/svg+xml');
   const root = parsed.documentElement;
   if (!root || root.nodeName.toLowerCase() !== 'svg' || parsed.querySelector('parsererror')) return null;
   const clean = (node) => {

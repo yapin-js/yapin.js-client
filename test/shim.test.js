@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync, existsSync } from 
 import Module, { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import vm from 'node:vm';
 
 const require = createRequire(import.meta.url);
 const SHIM = require.resolve('../src/desktop/shim.cjs');
@@ -163,6 +164,37 @@ test('secrets are stored encrypted and read back', async () => {
   await shim.call('secret-delete', t, 'token');
   assert.equal(await shim.call('secret-get', t, 'token'), null);
   await assert.rejects(shim.call('secret-set', t, '../x', 'v'), /Invalid secret name/);
+});
+
+test('the preload injects the runtime as a script whose result is undefined', () => {
+  let injected = null;
+  const electron = {
+    contextBridge: { exposeInMainWorld() {} },
+    ipcRenderer: {
+      on() {},
+      sendSync: () => ({ runtime: '(function(){ return { default: (args) => ({ client: args.manifest.id }) }; })', args: { manifest: { id: 'demo' }, nativeKey: '__yc_test' } }),
+    },
+    webFrame: {
+      executeJavaScript: (code) => {
+        injected = code;
+        return Promise.resolve();
+      },
+    },
+  };
+  const PRELOAD = require.resolve('../src/desktop/preload.cjs');
+  const originalLoad = Module._load;
+  Module._load = function (request, ...rest) {
+    return request === 'electron' ? electron : originalLoad.call(this, request, ...rest);
+  };
+  try {
+    delete require.cache[PRELOAD];
+    require(PRELOAD);
+  } finally {
+    Module._load = originalLoad;
+  }
+  assert.ok(injected, 'the runtime is injected');
+  const result = vm.runInNewContext(injected);
+  assert.equal(result, undefined, 'converting the Client object back to the preload hangs the page');
 });
 
 test('only https and mailto links open', async () => {

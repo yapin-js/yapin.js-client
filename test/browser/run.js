@@ -93,10 +93,9 @@ const results = {};
 (async () => {
   try {
     await client.ready;
-    // the welcome screen would otherwise cover the page on this first run; mark it (and what's new) seen
-    // so the rest of this test can click through the settings menu undisturbed.
-    client.welcome.markSeen();
-    client.whatsNew.markSeen();
+    // First run: the welcome screen is already up. The clicks below are programmatic, so it doesn't get in the way.
+    results.welcomeShownOnce = document.querySelectorAll('.yc-onboard').length;
+    results.whatsNewSkippedOnFirstRun = client.whatsNew.shouldShow() === false;
     await sleep(50);
     const nav = document.querySelector('nav.settings-nav');
     results.navLabels = [...nav.querySelectorAll('.settings-nav-label')].map((l) => l.textContent);
@@ -142,13 +141,11 @@ const results = {};
     results.badges = [...document.querySelectorAll('#profile .yc-badge')].map((b) => b.getAttribute('aria-label'));
     client.ui.toast('Hello from the test', { type: 'success', timeout: 0 });
     results.toast = document.querySelector('.yc-toast')?.textContent;
-    results.toastHasIcon = !!document.querySelector('.yc-toast .yc-icon svg');
+    results.toastHasIcon = document.querySelector('.yc-toast .yc-icon svg')?.namespaceURI === 'http://www.w3.org/2000/svg';
 
-    client.welcome.show();
-    await sleep(30);
     results.welcomeTitle = document.querySelector('.yc-onboard-title')?.textContent;
     results.welcomeStep = document.querySelector('.yc-onboard-row-title')?.textContent;
-    results.welcomeHasIcon = !!document.querySelector('.yc-onboard-hero-icon svg');
+    results.welcomeHasIcon = document.querySelector('.yc-onboard-hero-icon svg')?.namespaceURI === 'http://www.w3.org/2000/svg';
     document.querySelector('.yc-onboard-actions button:last-child').click();
     await sleep(250);
     results.welcomeClosed = !document.querySelector('.yc-onboard');
@@ -206,6 +203,8 @@ const expect = {
   badges: (v) => JSON.stringify(v) === JSON.stringify(['T']),
   toast: (v) => typeof v === 'string' && v.includes('Hello from the test'),
   toastHasIcon: (v) => v === true,
+  welcomeShownOnce: (v) => v === 1,
+  whatsNewSkippedOnFirstRun: (v) => v === true,
   welcomeTitle: (v) => v === 'Welcome to Browser Test',
   welcomeStep: (v) => v === 'Step one',
   welcomeHasIcon: (v) => v === true,

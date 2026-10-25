@@ -110,7 +110,8 @@ module.exports = function setup({ payloadDir }) {
     os: `${os.type()} ${os.release()} (${process.arch})`,
     platform: process.platform,
   };
-  log('info', `starting ${manifest.name} ${manifest.version}${safeMode ? ' in safe mode' : ''}`);
+  log('info', `starting ${manifest.name} ${manifest.version}${safeMode ? ' in safe mode' : ''} (pid ${process.pid}, args ${JSON.stringify(process.argv.slice(1))})`);
+  app.on('will-quit', () => log('info', `quitting (pid ${process.pid})`));
 
   /** Only the main frame of Yapin’s own pages may talk to us. */
   const trusted = (event) => {
@@ -179,16 +180,30 @@ module.exports = function setup({ payloadDir }) {
     return true;
   };
 
-  handleSync('boot', () => ({
-    runtime,
-    args: {
-      manifest,
-      nativeKey,
-      safeMode,
-      environment,
-      snapshot: { storage: readStorage(), userPlugins: readAllUser('plugins'), userThemes: readAllUser('themes') },
-    },
-  }));
+  ipcMain.on(`${PREFIX}boot`, (event) => {
+    const url = event.senderFrame ? event.senderFrame.url : '(no frame)';
+    if (!trusted(event)) {
+      event.returnValue = null;
+      return;
+    }
+    const started = Date.now();
+    try {
+      event.returnValue = {
+        runtime,
+        args: {
+          manifest,
+          nativeKey,
+          safeMode,
+          environment,
+          snapshot: { storage: readStorage(), userPlugins: readAllUser('plugins'), userThemes: readAllUser('themes') },
+        },
+      };
+      log('info', `boot served to ${url} in ${Date.now() - started} ms`);
+    } catch (error) {
+      log('error', 'boot', error);
+      event.returnValue = null;
+    }
+  });
   handleSync('storage-write-sync', (_event, ns, json) => writeStorage(ns, json));
   handle('storage-write', (_event, ns, json) => writeStorage(ns, json));
   handle('list', (_event, kind) => (KINDS.has(kind) ? listFiles(kind) : []));
@@ -390,6 +405,39 @@ module.exports = function setup({ payloadDir }) {
   /** Crash-loop protection: two renderer crashes soon after loading mean the next start is in safe mode. */
   app.on('web-contents-created', (_event, contents) => {
     let loadedAt = 0;
+    let navigatedAt = 0;
+    const ours = (url) => {
+      try {
+        return origins.has(new URL(url).origin);
+      } catch {
+        return false;
+      }
+    };
+    // Enough to tell from main.log alone why a page never finished loading.
+    contents.on('did-start-navigation', (details) => {
+      if (!details.isMainFrame || details.isSameDocument || !ours(details.url)) return;
+      navigatedAt = Date.now();
+      log('info', `loading ${details.url}`);
+    });
+    contents.on('dom-ready', () => {
+      if (navigatedAt && ours(contents.getURL())) log('info', `dom-ready after ${Date.now() - navigatedAt} ms`);
+    });
+    contents.on('did-fail-load', (_e, code, description, url, isMainFrame) => {
+      if (isMainFrame && code !== -3 && ours(url)) log('warn', `load failed: ${description} (${code}) ${url}`);
+    });
+    contents.on('preload-error', (_e, file, error) => log('error', `preload ${file} failed`, error));
+    let consoleErrors = 0;
+    contents.on('console-message', (event, level, message, line, sourceId) => {
+      const text = event && event.message !== undefined ? event.message : message;
+      const severity = event && event.level !== undefined ? event.level : level;
+      if ((severity !== 'error' && severity !== 3) || consoleErrors >= 30 || !ours(contents.getURL())) return;
+      consoleErrors++;
+      const source = (event && event.sourceId) || sourceId || '';
+      log('warn', `page error: ${text}${source ? ` (${source}:${(event && event.lineNumber) || line || 0})` : ''}`);
+    });
+    contents.on('unresponsive', () => {
+      if (ours(contents.getURL())) log('warn', 'page unresponsive');
+    });
     contents.on('did-finish-load', () => {
       loadedAt = Date.now();
       setTimeout(() => {
@@ -400,6 +448,7 @@ module.exports = function setup({ payloadDir }) {
       }, 60_000);
     });
     contents.on('render-process-gone', (_e, details) => {
+      if (ours(contents.getURL())) log('warn', `page process gone: ${details.reason} (exit code ${details.exitCode})`);
       if (details.reason === 'clean-exit' || details.reason === 'killed') return;
       if (Date.now() - loadedAt < 60_000) {
         state.crashes = (state.crashes || 0) + 1;

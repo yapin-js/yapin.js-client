@@ -64,6 +64,8 @@ const PREFIX = 'yapin-client:';
     },
   });
 
-  const code = `(${boot.runtime})().default(${JSON.stringify(boot.args)});\n//# sourceURL=yapin-client://${encodeURIComponent(boot.args.manifest.id)}/runtime.js`;
+  // `void 0` keeps the script's result undefined: executeJavaScript converts the result back to this world,
+  // and converting the Client object (which reaches window and the whole DOM) hangs the page before it loads.
+  const code = `(${boot.runtime})().default(${JSON.stringify(boot.args)});\nvoid 0;\n//# sourceURL=yapin-client://${encodeURIComponent(boot.args.manifest.id)}/runtime.js`;
   webFrame.executeJavaScript(code).catch((error) => console.error('[yapin-client] the client app failed to start', error));
 })();
