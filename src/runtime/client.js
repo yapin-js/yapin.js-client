@@ -150,7 +150,11 @@ export class Client {
     this.badges.start();
     await this.plugins.startAll();
     if (this.safeMode) this.ui.toast(`${this.name} is in safe mode: plugins and themes are off.`, { type: 'warning', timeout: 8000 });
-    this.#maybeShowOnboarding();
+    try {
+      this.#maybeShowOnboarding();
+    } catch (error) {
+      this.reportError(error, { where: 'welcome/what\'s new' });
+    }
     this.isReady = true;
     this.#readyResolve(this);
     this.events.emit('ready', this);
