@@ -104,7 +104,7 @@ start(ctx) {
 
 ## Lifecycle
 
-```
+```text
 stopped → starting → running → stopped
                    ↘ error (start threw)
            running → crashed (failed too often)

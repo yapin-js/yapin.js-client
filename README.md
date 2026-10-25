@@ -36,7 +36,7 @@ npm run dev
 
 ## What a client app looks like
 
-```
+```text
 my-client/
   yapin-client.config.js     name, options, installer
   src/index.js               your code (runs in the page)

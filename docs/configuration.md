@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => ({
 
 Problems are reported together, and options that look like typos get a suggestion:
 
-```
+```text
 ✖ yapin-client.config.js:
   - version "1.0" must look like 1.2.3
   - settings.fn is a function; options that reach the client app must be plain data. Put code in your entry file instead

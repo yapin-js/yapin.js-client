@@ -2,7 +2,7 @@
 
 The Yapin’ desktop app is an Electron app whose window loads the Yapin’ website (`https://www.yapper.website`). A client app gets in at three points: the app's main process, a preload script, and the page itself. The web version skips the first two.
 
-```
+```text
 Yapper.exe
  └─ resources/app.asar ............ the stub, written by the installer
      ├─ loads <data>/app/shim.cjs .. your client app's main-process part
@@ -83,7 +83,7 @@ See [The web version](web.md).
 
 ## Where things live on disk
 
-```
+```text
 <appData>/yapin-client/<id>/
   app/            the installed payload (replaced on every install or update)
   plugins/        plugins the person installed (*.plugin.js)

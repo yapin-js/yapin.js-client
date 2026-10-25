@@ -177,7 +177,9 @@ function writeStub(resources, { manifest, payloadDir, originalPkg }) {
     originalAsar: originalAsarName,
     installedAt: new Date().toISOString(),
   };
-  createArchive({ 'package.json': JSON.stringify(pkg, null, 2), 'index.js': STUB_INDEX, [markerFile]: JSON.stringify(marker, null, 2) }, join(resources, 'app.asar'));
+  const tmp = join(resources, 'app.asar.yapin-client.tmp');
+  createArchive({ 'package.json': JSON.stringify(pkg, null, 2), 'index.js': STUB_INDEX, [markerFile]: JSON.stringify(marker, null, 2) }, tmp);
+  renameSync(tmp, join(resources, 'app.asar'));
   return marker;
 }
 
@@ -208,24 +210,23 @@ export function install({ resources, payload, target = defaultTarget, dataDir, f
 
     onStep('Copying files');
     const payloadDir = installPayload(payload, dir);
+    const appAsar = join(resources, 'app.asar');
+    const original = join(resources, originalAsarName);
+    const unpacked = join(resources, 'app.asar.unpacked');
+    const originalUnpacked = join(resources, `${originalAsarName}.unpacked`);
+    let movedAsar = false;
+    let movedUnpacked = false;
     try {
-      const appAsar = join(resources, 'app.asar');
-      const original = join(resources, originalAsarName);
-      const unpacked = join(resources, 'app.asar.unpacked');
-      const originalUnpacked = join(resources, `${originalAsarName}.unpacked`);
       if (status.state === 'clean' || (status.state === 'foreign' && force) || (status.state === 'needs-repair' && status.stale)) {
         if (existsSync(original)) rmSync(original, { force: true });
         // After an update, the new unpacked files replace the old ones; without new ones, keep the old.
         if (existsSync(originalUnpacked) && existsSync(unpacked)) rmSync(originalUnpacked, { recursive: true, force: true });
         onStep('Moving the original app aside');
         renameSync(appAsar, original);
+        movedAsar = true;
         if (existsSync(unpacked)) {
-          try {
-            renameSync(unpacked, originalUnpacked);
-          } catch (cause) {
-            renameSync(original, appAsar);
-            throw cause;
-          }
+          renameSync(unpacked, originalUnpacked);
+          movedUnpacked = true;
         }
       } else if (status.state === 'needs-repair' && !existsSync(appAsar) && existsSync(original)) {
         onStep('Recovering a half-finished install');
@@ -242,6 +243,15 @@ export function install({ resources, payload, target = defaultTarget, dataDir, f
       onStep('Done');
       return { resources, payloadDir, dataDir: dir, marker, appVersion: originalPkg.version, previous: status.state };
     } catch (cause) {
+      try {
+        if (movedUnpacked) renameSync(originalUnpacked, unpacked);
+        if (movedAsar) {
+          rmSync(appAsar, { force: true });
+          renameSync(original, appAsar);
+        }
+      } catch (rollback) {
+        throw new InstallError(`Install failed and couldn't be undone: ${rollback.message}`, { code: 'ROLLBACK_FAILED', cause, hint: `Rename ${originalAsarName} back to app.asar in ${resources}, or reinstall the desktop app.` });
+      }
       throw permissionError(cause, resources);
     }
   });

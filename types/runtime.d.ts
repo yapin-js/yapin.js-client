@@ -307,6 +307,9 @@ export interface BadgeManager {
   refresh(providerId?: string): Promise<void>;
   render(badges: Badge[], options?: { size?: BadgeSlot['size'] }): HTMLElement;
   slots(): Record<string, BadgeSlot | null>;
+  /** A slot from code; `userId` may be a function of the element. Returns a remover. */
+  addSlot(name: string, slot: BadgeSlot): () => void;
+  removeSlot(name: string): void;
 }
 
 export declare function parseBadgeTable(data: unknown): Map<string, Badge[]>;
