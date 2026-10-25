@@ -1,6 +1,6 @@
 {
   "name": "yapin.js-client",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "A zero-dependency framework for building Yapin’ client mods: plugins, themes, settings pages, badges, API access and a branded installer.",
   "repository": {
     "type": "git",
