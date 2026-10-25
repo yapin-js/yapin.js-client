@@ -80,6 +80,8 @@ export function svg(markup) {
 export const baseCSS = `
 .yc-page{display:flex;flex-direction:column;gap:4px;min-width:0}
 .yc-page h2{margin:0 0 12px}
+.yc-page a,.yc-dialog a{color:var(--accent);text-decoration:none}
+.yc-page a:hover,.yc-dialog a:hover{text-decoration:underline}
 .yc-section{margin:18px 0 6px}
 .yc-section-title{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
 .yc-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

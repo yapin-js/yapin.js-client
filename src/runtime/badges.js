@@ -46,7 +46,11 @@ export class BadgeManager {
     if (record.url || record.load) {
       const refresh = parseDuration(record.refresh ?? '30m', 1_800_000);
       void this.#loadTable(record);
-      if (refresh > 0) this.#timers.set(record.id, setInterval(() => void this.#loadTable(record), Math.max(60_000, refresh)));
+      if (refresh > 0) {
+        const timer = setInterval(() => void this.#loadTable(record), Math.max(60_000, refresh));
+        timer.unref?.();
+        this.#timers.set(record.id, timer);
+      }
     }
     this.#changed();
     return () => this.removeProvider(provider.id);
@@ -137,24 +141,22 @@ export class BadgeManager {
   }
 
   async #collect(userId) {
-    const out = [...(this.#static.get(userId) ?? [])];
     const providers = [...this.#providers.values()].sort((a, b) => b.priority - a.priority);
-    await Promise.all(
+    const lists = await Promise.all(
       providers.map(async (provider) => {
         try {
           let list = [];
           if (provider.table) list = provider.table.get(userId) ?? [];
           else if (provider.loading) list = (await provider.loading)?.get(userId) ?? [];
           if (typeof provider.get === 'function') list = [...list, ...toArray(await provider.get(userId))];
-          for (const badge of list) {
-            const normalized = this.normalize(badge, provider.id);
-            if (normalized) out.push(normalized);
-          }
+          return list.map((badge) => this.normalize(badge, provider.id)).filter(Boolean);
         } catch (error) {
           this.client.reportError(tagError(error, { where: `badges ${provider.id}` }));
+          return [];
         }
       }),
     );
+    const out = [...(this.#static.get(userId) ?? []), ...lists.flat()];
     const seen = new Set();
     return out
       .filter((b) => {
