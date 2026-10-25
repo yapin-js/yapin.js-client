@@ -312,6 +312,9 @@ export class BadgeManager {
   stop() {
     for (const timer of this.#timers.values()) clearInterval(timer);
     this.#timers.clear();
+    for (const stop of this.#watching.values()) stop();
+    this.#watching.clear();
+    this.#started = false;
   }
 }
 

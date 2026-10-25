@@ -118,20 +118,19 @@ Yapin’ doesn't put user ids in its markup. The framework finds them by walking
 slots: { custom: { selector: '.thing', userIdProps: ['ownerId'] } }
 ```
 
-Or, from code, a function:
+When the id comes from somewhere else, add the slot from code with a `userId` function:
 
 ```js
-client.badges.slots();   // the slots in use
-```
-
-For a slot that needs a function, add it in your entry file by setting `client.config.badges.slots` before start isn't possible (the config is frozen), so draw it yourself instead:
-
-```js
-client.dom.observe('.thing', (element) => {
-  const userId = element.dataset.owner;
-  client.badges.for(userId).then((badges) => element.append(client.badges.render(badges, { size: 'sm' })));
+const removeSlot = client.badges.addSlot('members', {
+  selector: '.member-row',
+  position: 'append',
+  size: 'sm',
+  userId: (element) => element.dataset.userId ?? client.react.findUserId(element),
 });
+client.badges.slots();   // every slot in use
 ```
+
+Slots added with `addSlot` replace config slots of the same name. They work before or after the client starts.
 
 ## Reading badges
 
