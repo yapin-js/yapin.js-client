@@ -10,7 +10,20 @@ Every client app gets an About page in settings, filled in by the build:
 | `environment` (Environment) | `environment.platform`, `environment.desktop`, `environment.electron`, `environment.chrome`, `environment.node`, `environment.os` | Where it's running. |
 | `links` (Links) | `links.<key>` | One per entry in your config's `links`. |
 
-Under the rows are buttons: **Copy debug info** (`copy`), and on desktop **Open data folder** (`folder`) and **Restart in safe mode** (`safeMode`).
+## How it's laid out
+
+- **A header card** for the `app` section: a logo tile, the name with a version tag (click the copy icon to copy it), and the description. Any other `app.*` field shows small underneath.
+- **A row of buttons**: **Copy debug info** (`copy`), **Welcome screen** (`welcome`) and **What's new** (`whatsNew`) when those are on, and on desktop **Data folder** (`folder`) and **Safe mode** (`safeMode`).
+- **A grid of compact cards**, one per other section, with labels and values side by side. Long values are cut short with the full text on hover, and copyable values get a copy icon.
+- **Links** as small chips that open in the browser.
+
+Each section's look is its `layout`, so any of them can be changed:
+
+| Layout | |
+| --- | --- |
+| `rows` | Label and value side by side. The default for new sections. |
+| `chips` | Compact pills: links show their label, other fields their value. The `links` section uses it. |
+| `header` | The card at the top. Its `name`, `version` and `description` fields become the title, the version tag and the line under it. The `app` section uses it. Only the first `header` section is drawn as the header; give it to another section to change what's at the top. |
 
 **Copy debug info** copies every row as text, plus enabled plugins and themes (with versions and sources) and the last 20 warnings and errors. It's what you want in bug reports.
 
@@ -19,10 +32,12 @@ Under the rows are buttons: **Copy debug info** (`copy`), and on desktop **Open 
 ```js
 about: {
   title: 'About Nebula',
+  logo: 'sparkles',                                  // the header tile: an icon name, SVG, or image URL (default: the first letter)
   intro: 'Thanks for using Nebula!',
   sections: {
     environment: false,                              // hide a whole section
     support: { title: 'Support', order: 35 },        // add one (built-in orders: 0, 10, 20, 30, 40)
+    links: { layout: 'rows' },                       // show links as rows instead of chips
   },
   fields: {
     'git.remote': false,                             // hide a row
@@ -46,8 +61,10 @@ client.about.set('app.version', { value: `${client.version} (beta)` });
 client.about.set('stats.plugins', { label: 'Plugins running', value: () => String(client.plugins.list().filter((p) => p.status === 'running').length) });
 client.about.remove('git.dirty');
 client.about.section('stats', { title: 'Stats', order: 25 });
+client.about.section('community', { title: 'Community', layout: 'chips' });
+client.about.sections();   // [{ id, title, order, layout }], in order
 client.about.removeSection('environment');
-client.about.action('report', { label: 'Report a bug', run: (client) => client.openExternal('https://github.com/ada/nebula/issues/new') });
+client.about.action('report', { label: 'Report a bug', icon: 'alertCircle', run: (client) => client.openExternal('https://github.com/ada/nebula/issues/new') });
 client.about.removeAction('folder');
 client.about.debugInfo();   // the text Copy debug info copies
 ```

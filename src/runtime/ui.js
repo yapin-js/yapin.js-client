@@ -95,7 +95,33 @@ export const baseCSS = `
 .yc-kv{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:8px 16px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--border)}
 .yc-kv dt{color:var(--text-muted);font-size:13px}
 .yc-kv dd{margin:0;word-break:break-word;font-size:14px}
-.yc-kv code,.yc-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;background:var(--bg-input);border-radius:6px;padding:1px 6px}
+.yc-about{display:flex;flex-direction:column;gap:12px}
+.yc-about-header{display:flex;gap:14px;align-items:center;background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius,10px);padding:14px 16px}
+.yc-about-logo{width:48px;height:48px;border-radius:12px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent);font-size:22px;font-weight:700}
+.yc-about-logo .yc-icon{width:26px;height:26px}
+.yc-about-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:17px;font-weight:700}
+.yc-about-version{display:inline-flex;align-items:center;gap:2px;font-size:11.5px;font-weight:600;padding:1px 4px 1px 8px;border-radius:999px;background:var(--bg-active);color:var(--text-muted)}
+.yc-about-desc{color:var(--text-muted);font-size:13px;margin-top:2px}
+.yc-about-meta{display:flex;flex-wrap:wrap;gap:2px 14px;font-size:12.5px;margin-top:6px}
+.yc-about-label{color:var(--text-muted)}
+.yc-about-actions{display:flex;flex-wrap:wrap;gap:6px}
+.yc-about-actions .yc-icon{width:15px;height:15px;margin-right:4px}
+.yc-about-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.yc-about-card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius,10px);padding:10px 14px;min-width:0}
+.yc-about-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 12px;margin:0;font-size:13px;align-items:center}
+.yc-about-rows dt{color:var(--text-muted)}
+.yc-about-rows dd{margin:0;min-width:0}
+.yc-about-value{display:inline-flex;align-items:center;gap:2px;max-width:100%;min-width:0;vertical-align:middle}
+.yc-about-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.yc-about-copy{display:inline-flex;flex-shrink:0;border:0;background:none;color:var(--text-muted);cursor:pointer;padding:2px;border-radius:5px}
+.yc-about-copy:hover{background:var(--bg-hover);color:var(--text)}
+.yc-about-copy .yc-icon{width:14px;height:14px}
+.yc-about-chips{display:flex;flex-wrap:wrap;gap:6px}
+.yc-about-chip{display:inline-flex;align-items:center;gap:5px;max-width:100%;padding:3px 10px;border-radius:999px;background:var(--bg-active);font-size:12.5px;color:var(--text)}
+.yc-page a.yc-about-chip{color:var(--text)}
+.yc-page a.yc-about-chip:hover{text-decoration:none;background:var(--bg-hover)}
+.yc-about-chip .yc-icon{width:13px;height:13px;color:var(--text-muted)}
+.yc-kv code,.yc-about code,.yc-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px;background:var(--bg-input);border-radius:6px;padding:1px 6px}
 .yc-card{background:var(--bg-elev);border:1px solid var(--border);border-radius:var(--radius,10px);padding:12px 14px;margin:8px 0}
 .yc-card-head{display:flex;align-items:center;gap:10px}
 .yc-card-title{font-weight:600}

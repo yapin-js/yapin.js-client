@@ -113,8 +113,9 @@ settings: {
 | --- | --- | --- |
 | `title` | `About` | |
 | `order` | `0` | |
-| `intro` | none | A line under the heading. |
-| `sections` | | `{ git: false }` hides a section; `{ support: { title: 'Support', order: 35 } }` adds one. |
+| `logo` | the name's first letter | The tile in the header card: an icon name, SVG, or https/data image URL. |
+| `intro` | none | A line under the header. |
+| `sections` | | `{ git: false }` hides a section; `{ support: { title: 'Support', order: 35 } }` adds one; `{ links: { layout: 'rows' } }` changes how one looks (`rows`, `chips` or `header`). |
 | `fields` | | `{ 'git.remote': false }` hides a row; `{ 'support.email': { label: 'Email', value: 'help@example.com' } }` adds one. A string is a value. |
 | `actions` | | `{ safeMode: false }` removes a button (`copy`, `folder`, `safeMode`). |
 

@@ -64,6 +64,7 @@ export const defaults = Object.freeze({
     title: 'About',
     order: 0,
     icon: 'info',
+    logo: null,
     intro: null,
     sections: {},
     fields: {},

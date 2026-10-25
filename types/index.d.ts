@@ -111,8 +111,10 @@ export interface Config {
         title?: string;
         order?: number;
         icon?: string;
+        /** Shown in the header card: a built-in icon name, SVG markup, or an https/data image URL. Default: the name's first letter. */
+        logo?: string | null;
         intro?: string | null;
-        sections?: Record<string, boolean | { title?: string | null; order?: number }>;
+        sections?: Record<string, boolean | { title?: string | null; order?: number; layout?: 'rows' | 'chips' | 'header' }>;
         fields?: Record<string, false | string | { label?: string; value?: string; href?: string; copy?: boolean | string; code?: boolean; order?: number; hidden?: boolean }>;
         actions?: Record<string, false>;
       };

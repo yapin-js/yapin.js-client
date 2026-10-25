@@ -376,6 +376,18 @@ test('the about page: defaults, config edits and code edits', async () => {
   client.about.set('support.discord', { label: 'Community', value: 'https://example.com/chat' });
   assert.match(client.about.debugInfo(), /Community: https:\/\/example\.com\/chat/);
   assert.throws(() => client.about.set('nodot', {}), /section\.name/);
+  const layouts = Object.fromEntries(client.about.sections().map((s) => [s.id, s.layout]));
+  assert.equal(layouts.app, 'header');
+  assert.equal(layouts.build, 'rows');
+  assert.equal(layouts.support, 'rows', 'a new section defaults to rows');
+  client.about.section('build', { layout: 'chips' });
+  assert.equal(client.about.sections().find((s) => s.id === 'build').layout, 'chips');
+  client.about.section('build', { title: 'Made' });
+  assert.equal(client.about.sections().find((s) => s.id === 'build').layout, 'chips', 'changing the title keeps the layout');
+  client.about.section('build', { layout: 'nonsense' });
+  assert.equal(client.about.sections().find((s) => s.id === 'build').layout, 'chips', 'an unknown layout is ignored');
+  const fromConfig = makeClient({ about: { sections: { links: { layout: 'rows' }, app: { layout: 'rows' } } } });
+  assert.deepEqual(fromConfig.about.sections().filter((s) => ['app', 'links'].includes(s.id)).map((s) => s.layout), ['rows', 'rows']);
   const disabled = makeClient({ about: false });
   assert.equal(disabled.about, null);
   await disabled.start();

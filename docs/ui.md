@@ -43,7 +43,7 @@ ui.icon(svgMarkupOrImageURL)
 
 `ui.icon()`, and anywhere else an `icon` option is accepted (page icons, About fields, `ui.card`, `ui.button`, toasts, dialogs, the [welcome and what's new screens](welcome.md)), takes:
 
-- A built-in name: `'sparkles'`, `'rocket'`, `'puzzle'`, `'palette'`, `'sliders'`, `'info'`, `'check'`, `'x'`, `'alertTriangle'`, `'alertCircle'`, `'chevronRight'`, `'megaphone'`, `'bell'`, `'external'`, `'heart'`, `'shield'`.
+- A built-in name: `'sparkles'`, `'rocket'`, `'puzzle'`, `'palette'`, `'sliders'`, `'info'`, `'check'`, `'x'`, `'alertTriangle'`, `'alertCircle'`, `'chevronRight'`, `'megaphone'`, `'bell'`, `'external'`, `'heart'`, `'copy'`, `'folder'`, `'shield'`.
 - SVG markup, sanitized (no scripts, event handlers, `foreignObject` or external links).
 - An https or `data:image/…` URL.
 - An element.

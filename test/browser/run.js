@@ -107,10 +107,15 @@ const results = {};
     results.ourActive = nav.querySelector('[data-yc-page-id=about]').classList.contains('active');
     const ours = document.querySelector('section.settings-main[data-yc-page]');
     results.aboutHeading = ours?.querySelector('h2')?.textContent;
-    results.aboutRows = [...ours.querySelectorAll('dt')].map((d) => d.textContent);
+    results.aboutHeader = ours.querySelector('.yc-about-title')?.textContent;
+    results.aboutHeaderClean = ours.querySelector('.yc-about-header .yc-grow')?.textContent === ours.querySelector('.yc-about-title')?.textContent;
+    results.aboutRows = [...ours.querySelectorAll('.yc-about-card dt')].map((d) => d.textContent);
+    results.aboutCards = [...ours.querySelectorAll('.yc-about-card')].map((c) => c.dataset.section);
+    results.aboutChips = [...ours.querySelectorAll('.yc-about-chip')].map((c) => c.textContent.trim());
+    results.aboutActionIcons = ours.querySelectorAll('.yc-about-actions .yc-icon svg').length;
     results.commitLink = ours.querySelector('a[href*="commit"]')?.textContent;
     client.about.set('app.version', { value: '10.0.0' });
-    results.liveUpdate = [...ours.querySelectorAll('dd')].some((d) => d.textContent.includes('10.0.0'));
+    results.liveUpdate = document.querySelector('section.settings-main[data-yc-page] .yc-about-version')?.textContent.includes('v10.0.0');
 
     nav.querySelector('[data-yc-page-id=plugins]').click();
     await sleep(30);
@@ -146,14 +151,14 @@ const results = {};
     results.welcomeTitle = document.querySelector('.yc-onboard-title')?.textContent;
     results.welcomeStep = document.querySelector('.yc-onboard-row-title')?.textContent;
     results.welcomeHasIcon = document.querySelector('.yc-onboard-hero-icon svg')?.namespaceURI === 'http://www.w3.org/2000/svg';
-    document.querySelector('.yc-onboard-actions button:last-child').click();
+    document.querySelector('.yc-onboard-actions button:last-child')?.click();
     await sleep(250);
     results.welcomeClosed = !document.querySelector('.yc-onboard');
 
     client.whatsNew.show();
     await sleep(30);
     results.whatsNewTitle = document.querySelector('.yc-onboard-title')?.textContent;
-    document.querySelector('.yc-onboard-close').click();
+    document.querySelector('.yc-onboard-close')?.click();
     await sleep(250);
     results.whatsNewClosed = !document.querySelector('.yc-onboard');
 
@@ -190,7 +195,12 @@ const expect = {
   hostActiveCleared: (v) => v === true,
   ourActive: (v) => v === true,
   aboutHeading: (v) => v === 'About',
-  aboutRows: (v) => Array.isArray(v) && v.includes('Version') && v.includes('Commit') && v.includes('Chromium'),
+  aboutHeader: (v) => typeof v === 'string' && v.startsWith('Browser Test') && v.includes('v9.9.9'),
+  aboutHeaderClean: (v) => v === true,
+  aboutRows: (v) => Array.isArray(v) && v.includes('Commit') && v.includes('Chromium') && !v.includes('Version'),
+  aboutCards: (v) => JSON.stringify(v) === JSON.stringify(['build', 'git', 'environment', 'links']),
+  aboutChips: (v) => JSON.stringify(v) === JSON.stringify(['Website']),
+  aboutActionIcons: (v) => v >= 1,
   commitLink: (v) => v === 'abcdef1',
   liveUpdate: (v) => v === true,
   pluginCard: (v) => v === 'Demo plugin',

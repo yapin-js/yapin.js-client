@@ -27,7 +27,7 @@ export function pluginsPage(client, config = {}) {
     id: 'plugins',
     title: config.title ?? 'Plugins',
     order: config.order ?? 10,
-    icon: config.icon ?? null,
+    icon: config.icon ?? 'puzzle',
     render(root, ctx) {
       const { ui } = client;
       let query = '';
@@ -142,7 +142,7 @@ export function themesPage(client, config = {}) {
     id: 'themes',
     title: config.title ?? 'Themes',
     order: config.order ?? 20,
-    icon: config.icon ?? null,
+    icon: config.icon ?? 'palette',
     render(root, ctx) {
       const { ui } = client;
       let query = '';

@@ -26,11 +26,11 @@ export class AboutPage {
     const c = this.client;
     const { build = {}, git = null } = c.manifest;
     const env = c.environment;
-    this.section('app', { title: null, order: 0 });
+    this.section('app', { title: null, order: 0, layout: 'header' });
     this.section('build', { title: 'Build', order: 10 });
     this.section('git', { title: 'Source', order: 20 });
     this.section('environment', { title: 'Environment', order: 30 });
-    this.section('links', { title: 'Links', order: 40 });
+    this.section('links', { title: 'Links', order: 40, layout: 'chips' });
 
     this.set('app.name', { label: 'Name', value: c.name, order: 0 });
     this.set('app.version', { label: 'Version', value: c.version, copy: true, order: 1 });
@@ -67,18 +67,20 @@ export class AboutPage {
 
     this.action('copy', {
       label: 'Copy debug info',
+      icon: 'copy',
       order: 0,
       run: async () => {
         await navigator.clipboard.writeText(this.debugInfo());
         c.ui.toast('Debug info copied', { type: 'success' });
       },
     });
-    if (c.welcome?.enabled) this.action('welcome', { label: 'Show welcome screen', order: 3, variant: 'ghost', run: () => c.welcome.show() });
-    if (c.whatsNew?.enabled && c.whatsNew.config.entries?.length) this.action('whatsNew', { label: "Show what's new", order: 4, variant: 'ghost', run: () => c.whatsNew.show() });
+    if (c.welcome?.enabled) this.action('welcome', { label: 'Welcome screen', icon: 'sparkles', order: 3, variant: 'ghost', run: () => c.welcome.show() });
+    if (c.whatsNew?.enabled && c.whatsNew.config.entries?.length) this.action('whatsNew', { label: "What's new", icon: 'rocket', order: 4, variant: 'ghost', run: () => c.whatsNew.show() });
     if (c.native) {
-      this.action('folder', { label: 'Open data folder', order: 1, run: () => c.native.openFolder('data') });
+      this.action('folder', { label: 'Data folder', icon: 'folder', order: 1, variant: 'ghost', run: () => c.native.openFolder('data') });
       this.action('safeMode', {
-        label: c.safeMode ? 'Restart normally' : 'Restart in safe mode',
+        label: c.safeMode ? 'Restart normally' : 'Safe mode',
+        icon: 'shield',
         order: 2,
         variant: 'ghost',
         run: async () => {
@@ -105,12 +107,27 @@ export class AboutPage {
     }
   }
 
-  /** Adds or changes a section: section('support', { title: 'Support', order: 35 }). */
-  section(id, { title, order } = {}) {
+  /**
+   * Adds or changes a section: section('support', { title: 'Support', order: 35, layout: 'rows' }).
+   * Layouts: 'rows' (label and value, the default), 'chips' (compact pills, for links) and 'header'
+   * (the card at the top: its `name`, `version` and `description` fields become the title, a version
+   * tag and the line under it; any other field is shown small underneath).
+   */
+  section(id, { title, order, layout } = {}) {
     const existing = this.#sections.get(id);
-    this.#sections.set(id, { id, title: title === undefined ? existing?.title ?? id : title, order: order ?? existing?.order ?? 100 });
+    this.#sections.set(id, {
+      id,
+      title: title === undefined ? existing?.title ?? id : title,
+      order: order ?? existing?.order ?? 100,
+      layout: LAYOUTS.has(layout) ? layout : existing?.layout ?? 'rows',
+    });
     this.#changed();
     return this;
+  }
+
+  /** The sections, in order: [{ id, title, order, layout }]. */
+  sections() {
+    return this.#sortedSections().map((s) => ({ ...s }));
   }
 
   removeSection(id) {
@@ -150,10 +167,10 @@ export class AboutPage {
     return [...this.#fields.values()].map((f) => ({ ...f }));
   }
 
-  /** A button at the bottom of the page: action('report', { label, run, variant, order }). */
-  action(id, { label, run, variant = 'primary', order = 100 } = {}) {
+  /** A button under the header: action('report', { label, icon, run, variant, order }). */
+  action(id, { label, icon = null, run, variant = 'primary', order = 100 } = {}) {
     if (typeof run !== 'function') throw new ClientError(ErrorCodes.InvalidDefinition, `About action "${id}" needs a run function`);
-    this.#actions.set(id, { id, label: label ?? id, run, variant, order });
+    this.#actions.set(id, { id, label: label ?? id, icon, run, variant, order });
     this.#changed();
     return this;
   }
@@ -198,16 +215,22 @@ export class AboutPage {
   render(root, ctx) {
     const { ui } = this.client;
     const draw = () => {
-      const parts = [ui.heading(this.config.title ?? 'About')];
-      if (this.config.intro) parts.push(ui.hint(this.config.intro));
-      for (const section of this.#sortedSections()) {
-        const fields = this.#sortedFields(section.id);
-        if (!fields.length) continue;
-        parts.push(ui.section({ title: section.title, children: [ui.keyValue(fields.map((f) => ({ label: f.label, value: this.#value(f) })))] }));
-      }
-      const actions = [...this.#actions.values()].sort((a, b) => a.order - b.order);
-      if (actions.length) parts.push(h('div', { class: 'yc-row', style: { marginTop: '16px' } }, actions.map((a) => ui.button({ label: a.label, variant: a.variant, small: true, onClick: () => a.run(this.client) }))));
-      root.replaceChildren(...parts);
+      const sections = this.#sortedSections()
+        .map((section) => ({ ...section, fields: this.#sortedFields(section.id) }))
+        .filter((section) => section.fields.length);
+      const header = sections.find((s) => s.layout === 'header');
+      const cards = sections.filter((s) => s !== header);
+      root.replaceChildren(
+        ui.heading(this.config.title ?? 'About'),
+        h(
+          'div',
+          { class: 'yc-about' },
+          header && this.#header(header),
+          this.config.intro && ui.hint(this.config.intro),
+          this.#actionBar(),
+          cards.length > 0 && h('div', { class: 'yc-about-grid' }, cards.map((s) => this.#card(s))),
+        ),
+      );
     };
     this.onChange = draw;
     draw();
@@ -216,28 +239,93 @@ export class AboutPage {
     });
   }
 
+  #header(section) {
+    const { ui } = this.client;
+    const field = (name) => section.fields.find((f) => f.id === `${section.id}.${name}`);
+    const [name, version, description] = [field('name'), field('version'), field('description')];
+    const rest = section.fields.filter((f) => f !== name && f !== version && f !== description);
+    const title = name ? valueText(name) : this.client.name;
+    const logo = this.config.logo ? ui.icon(this.config.logo) : null;
+    return h(
+      'div',
+      { class: 'yc-about-header', dataset: { section: section.id } },
+      h('div', { class: 'yc-about-logo', attrs: { 'aria-hidden': 'true' } }, logo ?? title.trim().charAt(0).toUpperCase()),
+      h(
+        'div',
+        { class: 'yc-grow' },
+        h('div', { class: 'yc-about-title' }, title, version && h('span', { class: 'yc-about-version' }, `v${valueText(version).replace(/^v/, '')}`, version.copy && this.#copyButton(version))),
+        description && h('div', { class: 'yc-about-desc' }, valueText(description)),
+        rest.length > 0 && h('div', { class: 'yc-about-meta' }, rest.map((f) => h('span', null, h('span', { class: 'yc-about-label' }, f.label), ' ', this.#value(f)))),
+      ),
+    );
+  }
+
+  #actionBar() {
+    const { ui } = this.client;
+    const actions = [...this.#actions.values()].sort((a, b) => a.order - b.order);
+    if (!actions.length) return null;
+    return h('div', { class: 'yc-about-actions' }, actions.map((a) => ui.button({ label: a.label, icon: a.icon, variant: a.variant, small: true, onClick: () => a.run(this.client) })));
+  }
+
+  #card(section) {
+    return h(
+      'section',
+      { class: 'yc-about-card', dataset: { section: section.id, layout: section.layout } },
+      section.title && h('div', { class: 'yc-section-title' }, section.title),
+      section.layout === 'chips' ? this.#chips(section.fields) : this.#rows(section.fields),
+    );
+  }
+
+  #rows(fields) {
+    return h(
+      'dl',
+      { class: 'yc-about-rows' },
+      fields.flatMap((f) => [h('dt', null, f.label), h('dd', null, this.#value(f))]),
+    );
+  }
+
+  #chips(fields) {
+    const { ui } = this.client;
+    return h(
+      'div',
+      { class: 'yc-about-chips' },
+      fields.map((f) => {
+        if (f.href) return h(ui.link({ href: f.href, label: f.label, title: valueText(f) }), { class: 'yc-about-chip' }, ui.icon('external'));
+        return h('span', { class: 'yc-about-chip', title: f.label }, this.#value(f));
+      }),
+    );
+  }
+
   #value(field) {
     const { ui } = this.client;
     const text = valueText(field);
     const content = field.href ? ui.link({ href: field.href, label: text }) : field.code ? h('code', null, text) : text;
-    if (!field.copy) return content;
-    const copyText = field.copy === true ? text : String(field.copy);
-    return h(
-      'span',
-      { class: 'yc-row' },
-      content,
-      ui.button({
-        label: 'Copy',
-        small: true,
-        variant: 'ghost',
-        onClick: async () => {
-          await navigator.clipboard.writeText(copyText);
-          ui.toast('Copied', { type: 'success', timeout: 1500 });
-        },
-      }),
-    );
+    return h('span', { class: 'yc-about-value', title: text }, h('span', { class: 'yc-about-text' }, content), field.copy && this.#copyButton(field));
+  }
+
+  #copyButton(field) {
+    const { ui } = this.client;
+    const text = field.copy === true ? valueText(field) : String(field.copy);
+    const button = h('button', {
+      type: 'button',
+      class: 'yc-about-copy',
+      title: `Copy ${field.label.toLowerCase()}`,
+      attrs: { 'aria-label': `Copy ${field.label.toLowerCase()}` },
+      onClick: async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          button.replaceChildren(ui.icon('check'));
+          setTimeout(() => button.isConnected && button.replaceChildren(ui.icon('copy')), 1200);
+        } catch (error) {
+          ui.toast(`Couldn't copy: ${error?.message ?? error}`, { type: 'error' });
+        }
+      },
+    }, ui.icon('copy'));
+    return button;
   }
 }
+
+const LAYOUTS = new Set(['rows', 'chips', 'header']);
 
 function valueText(field) {
   try {

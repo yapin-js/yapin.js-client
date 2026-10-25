@@ -167,15 +167,19 @@ export interface AboutField {
   hidden?: boolean;
 }
 
+export type AboutLayout = 'rows' | 'chips' | 'header';
+
 export interface AboutPage {
   /** id is '<section>.<name>', like 'git.commit' or 'support.discord'. */
   set(id: string, field: AboutField): this;
   get(id: string): (AboutField & { id: string; section: string }) | null;
   remove(id: string): boolean;
   fields(): Array<AboutField & { id: string; section: string }>;
-  section(id: string, options: { title?: string | null; order?: number }): this;
+  /** 'rows' (default), 'chips' (compact pills, for links) or 'header' (the card at the top). */
+  section(id: string, options: { title?: string | null; order?: number; layout?: AboutLayout }): this;
+  sections(): Array<{ id: string; title: string | null; order: number; layout: AboutLayout }>;
   removeSection(id: string): this;
-  action(id: string, options: { label: string; run: (client: Client) => unknown; variant?: 'primary' | 'ghost' | 'danger'; order?: number }): this;
+  action(id: string, options: { label: string; icon?: string; run: (client: Client) => unknown; variant?: 'primary' | 'ghost' | 'danger'; order?: number }): this;
   removeAction(id: string): this;
   /** Everything on the page as text, plus enabled plugins, themes and recent errors. */
   debugInfo(): string;

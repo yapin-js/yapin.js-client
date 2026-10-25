@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **About page**: a cleaner, more compact layout: a header card (logo tile, name, version tag with a copy icon, description), a row of buttons with icons, and the other sections as small cards in a grid, with links as chips. Each section's look is its `layout` (`rows`, `chips` or `header`), changeable from the config or with `client.about.section(id, { layout })`; `about.logo` sets the header tile, actions take an `icon`, and `client.about.sections()` lists the sections. The Plugins and Themes pages get nav icons by default.
+
 - **Desktop**: fixed the client app freezing Yapin’ on start ("Yapin’ is taking too long to load", with no keyboard shortcuts working). The preload's injected script evaluated to the `Client` object, which `executeJavaScript` then tried to convert back to the preload; that object reaches `window` and the whole DOM, so the page hung before it finished loading. The script now evaluates to `undefined`.
 - **UI kit**: icons given as SVG markup without `xmlns` (the built-in icon set included) parsed as plain XML elements and drew nothing. `ui.svg()` and `ui.icon()` now add the SVG namespace when it's missing.
 - **Runtime**: a failure in the welcome or what's new screen is reported instead of stopping the client app from finishing start-up.
