@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 0.1.2
 
+- **Runtime**: a rounded, animated welcome screen for a client app's first run, and a what's new screen shown once after an update with something to say. Both are entirely optional (`welcome: false` / `whatsNew: false`), editable from the config (icon, title, subtitle, steps/entries, labels), and replayable any time with `client.welcome.show()` / `client.whatsNew.show()`. A matching button is added to the About page automatically.
+- **UI kit**: a small built-in icon set, usable by name (`icon: 'rocket'`) anywhere an icon is accepted — pages, the About page, cards, buttons, the new welcome/what's new screens. Toasts and `confirm()` dialogs now show a matching icon automatically.
 - **Installer**: the Windows `setup.exe` is now a setup wizard built with NSIS (Welcome, License, a page to choose Install, Update, Repair or Uninstall, progress with Show details, and Finish with Open Yapin’), branded with the logo and accent colour, and scriptable with `/S`, `/UNINSTALL` and `/PURGE`. Building it needs NSIS; without it, the build makes the browser launcher as before. New options: `installer.windows.nsis`, `sidebar` and `header`, and `setup*` strings.
 
 ## 0.1.0
