@@ -6,6 +6,10 @@ import { runCli, style } from './cli.js';
 import { createOperations } from './operations.js';
 import { openBrowser, startServer } from './server.js';
 
+// Run with the desktop app's Node (ELECTRON_RUN_AS_NODE), Electron still treats .asar files as folders.
+// The installer reads and writes them as plain files, so that has to be off.
+if (process.versions.electron) process.noAsar = true;
+
 /**
  * The installer program shipped with a client app (bundled into installer.mjs by the build). It reads
  * installer.json and payload/ from its own folder. Run by the install.cmd / install.sh launchers with

@@ -8,6 +8,7 @@ export { build, findPlugins, findThemes, runtimeConfig } from './build/build.js'
 export { pack, PackError } from './build/pack.js';
 export { readGitInfo } from './build/git.js';
 export { createZip, zipDirectory } from './build/zip.js';
+export { compileLauncher, createBundle, createSetupExe, findCsc, pngToIco, readBundle } from './build/windows.js';
 export { install, uninstall, repair, inspect, findInstalls, InstallError, STUB_VERSION } from './installer/patch.js';
 export { readFuses, checkFuses } from './installer/fuses.js';
 export { readHeader as readAsarHeader, listFiles as listAsarFiles, readFile as readAsarFile, createArchive as createAsar } from './installer/asar.js';

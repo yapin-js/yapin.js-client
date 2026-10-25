@@ -15,7 +15,7 @@ const { contextBridge, ipcRenderer, webFrame } = require('electron');
 const PREFIX = 'yapin-client:';
 
 (function start() {
-  if (!process.isMainFrame) return;
+  if (process.isMainFrame === false) return;
   let boot = null;
   try {
     boot = ipcRenderer.sendSync(`${PREFIX}boot`);

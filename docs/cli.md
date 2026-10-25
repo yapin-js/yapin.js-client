@@ -20,7 +20,7 @@ Creates a new client app in `dir` (default: the current folder): config, entry f
 npx yapin-client build [--mode development] [--no-installer]
 ```
 
-Builds into `outDir` (default `dist/`): the payload, the installer folder and zip, and the userscript ([The installer](installer.md), [The web version](web.md)). `--no-installer` skips the installer and zip, which is faster when you only need the payload.
+Builds into `outDir` (default `dist/`): the payload, the Windows setup `.exe`, the installer folder and zip, and the userscript ([The installer](installer.md), [The web version](web.md)). `--no-installer` skips the installers, which is faster when you only need the payload.
 
 The output folder is emptied first, but only if a previous build made it: the build leaves a marker file and refuses to empty a folder without one, or the project folder itself.
 

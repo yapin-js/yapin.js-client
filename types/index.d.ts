@@ -141,6 +141,19 @@ export interface Config {
     launchAfter?: boolean;
     zip?: boolean;
     gui?: boolean;
+    /** The Windows setup .exe. */
+    windows?: {
+      /** Build it (default true; skipped when gui is false). */
+      exe?: boolean;
+      /** Default: <id>-<version>-setup.exe */
+      fileName?: string | null;
+      /** A PNG (at most 256 px) or .ico for the .exe; default: the config's icon. Needs a Windows build. */
+      icon?: string | null;
+      /** Shown in the file's properties; default: the authors. */
+      company?: string | null;
+      /** A signing command run on the finished .exe, with {file} replaced: 'signtool sign /fd sha256 /a {file}'. */
+      sign?: string | null;
+    };
   };
 }
 
@@ -158,6 +171,7 @@ export interface BuildResult {
   payloadDir: string;
   installerDir: string | null;
   zipFile: string | null;
+  exeFile: string | null;
   userscriptFile: string | null;
   manifest: Record<string, any>;
   plugins: string[];

@@ -336,6 +336,7 @@ module.exports = function setup({ payloadDir }) {
         clearTimeout(timers.get(name));
         timers.set(name, setTimeout(() => onChange(String(name)), 150));
       });
+      watcher.unref?.();
       watchers.push(watcher);
     } catch (error) {
       log('warn', `can't watch ${dir}`, error);
@@ -377,10 +378,14 @@ module.exports = function setup({ payloadDir }) {
       log('error', 'could not register the preload', error);
     }
   };
-  app.whenReady().then(() => {
+  // 'ready' listeners run before whenReady() callbacks, and this one is added before Yapin’s main.js
+  // loads, so the preload is in place before Yapin’ creates its window either way.
+  const onReady = () => {
     registerPreload(session.defaultSession);
     if (desktop.csp === 'relax') relaxCSP(session.defaultSession, origins);
-  });
+  };
+  if (app.isReady()) onReady();
+  else app.once('ready', onReady);
 
   /** Crash-loop protection: two renderer crashes soon after loading mean the next start is in safe mode. */
   app.on('web-contents-created', (_event, contents) => {

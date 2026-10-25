@@ -10,7 +10,7 @@ It's a framework, not a finished client. It provides the plumbing, so your clien
 - **An About page.** Version, build, git commit and environment, out of the box. Every row can be edited, hidden or removed, and so can the whole page.
 - **Badges.** Next to names on profile cards and messages, from a JSON file, your API, or code. Every badge is sanitised.
 - **API access.** Named services with retries, caching and secrets stored in the operating system's key store. On desktop, requests go through the main process, checked against an allowlist that's fixed at build time.
-- **A branded installer.** Configured from a JSON file with three presets. It runs on the Node built into the desktop app, so the people installing need nothing else. It handles install, update, repair after desktop updates, and uninstall.
+- **A branded installer.** A single `setup.exe` on Windows (your icon, name and version, signable), a zip for macOS and Linux. Configured from a JSON file with three presets. It runs on the Node built into the desktop app, so the people installing need nothing else. It handles install, update, repair after desktop updates, and uninstall.
 - **Zero dependencies.** It includes its own bundler, asar reader and writer, zip writer and test suite.
 
 > Client apps modify Yapin’. Check Yapin’s terms before you publish one, and make clear that yours is unofficial (the installer says so by default).
@@ -30,7 +30,8 @@ npm run dev
 
 | File | What it is |
 | --- | --- |
-| `dist/<id>-<version>-installer.zip` | The installer to share. People unzip it and double-click `Install <Name>`. |
+| `dist/<id>-<version>-setup.exe` | The Windows installer: one file to share. |
+| `dist/<id>-<version>-installer.zip` | The installer for macOS and Linux. |
 | `dist/<id>.user.js` | The web version, for Tampermonkey or Violentmonkey. |
 | `dist/payload/` | What gets installed. |
 

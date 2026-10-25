@@ -178,5 +178,6 @@ host: {
 | `target` | Yapin’s desktop app | Overrides for finding the app: `packageName`, `productName`, `executable`, `processName`, `locations` (per platform). |
 | `closeApp` | `ask` | `ask`, `always` or `never` close Yapin’ when it's running. |
 | `launchAfter` | `true` | Reopen Yapin’ after installing, if it was running. |
-| `zip` | `true` | Build the installer zip. |
+| `zip` | `true` | Build the installer zip (macOS and Linux). |
+| `windows` | | The Windows setup `.exe`: `exe`, `fileName`, `icon`, `company`, `sign`. See [The installer](installer.md#the-windows-exe). |
 | `gui` | `true` | `false` makes the installer terminal-only. |

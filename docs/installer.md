@@ -1,25 +1,71 @@
 # The installer
 
-`yapin-client build` makes an installer for the people using your client app:
+`yapin-client build` makes installers for the people using your client app:
 
 ```text
 dist/
-  nebula-1.0.0-installer.zip
+  nebula-1.0.0-setup.exe        Windows: one file, double-click it
+  nebula-1.0.0-installer.zip    macOS and Linux (the folder below, zipped)
   installer/nebula/
-    Install Nebula.cmd        Windows: double-click
-    Install Nebula.command    macOS: double-click
-    install.sh                Linux: ./install.sh
-    installer.mjs             the installer itself
-    installer.json            your installer settings, with images included
-    payload/                  what gets installed
+    Install Nebula.command      macOS: double-click
+    install.sh                  Linux: ./install.sh
+    installer.mjs               the installer itself
+    installer.json              your installer settings, with images included
+    payload/                    what gets installed
     README.txt
 ```
 
-Share the zip. Your users unzip it and double-click the launcher for their system.
+Share the `.exe` with Windows users and the zip with everyone else.
 
 ## No Node needed
 
-The launchers run `installer.mjs` with the Node that's built into the Yapin’ desktop app (Electron's `ELECTRON_RUN_AS_NODE`). Anyone who has the desktop app can run the installer, and if the desktop app isn't found, the launcher falls back to `node` when it's installed. If the desktop app is missing entirely, the launcher says so.
+Every launcher runs `installer.mjs` with the Node that's built into the Yapin’ desktop app (Electron's `ELECTRON_RUN_AS_NODE`), so anyone who has the desktop app can run the installer. If the desktop app isn't found, the launchers fall back to `node` when it's installed, and otherwise say the desktop app is missing.
+
+## The Windows .exe
+
+`<id>-<version>-setup.exe` is a small launcher (about 13 kB, written in C#) with the whole installer folder compressed onto its end. When someone runs it, it:
+
+1. unpacks the installer into a new private folder in their temp directory;
+2. finds the desktop app (the places in [Targets](#targets), plus any you add) and runs the installer with its Node, with no console window;
+3. waits, then deletes the folder. If the installer fails, the error is shown in a message box.
+
+It runs as the current user (no administrator prompt), like the per-user desktop app it installs into.
+
+| Run as | Does |
+| --- | --- |
+| `nebula-setup.exe` | Opens the installer page in the browser. |
+| `nebula-setup.exe install --yes` (or any command) | Runs that installer command with no window ([options](#in-the-terminal)). |
+| `nebula-setup.exe --extract [--to <dir>]` | Unpacks the installer folder (next to the .exe by default), for running `installer.mjs --cli` yourself. |
+
+### Name, version and icon
+
+Built on Windows, the launcher is compiled for your client app with `csc.exe`, the C# compiler that comes with the .NET Framework on every Windows 10 and 11 machine. The .exe then shows your name, description, version and authors in its file properties, and your icon in Explorer and the taskbar. The icon is `installer.windows.icon`, or the config's `icon`: a PNG of at most 256×256 pixels, or an `.ico`.
+
+Built on macOS or Linux, the .exe uses a prebuilt generic launcher instead (same behaviour, generic icon and details), and the build says so.
+
+### Signing
+
+Windows warns about unsigned programs from the internet ("Windows protected your PC"), and some antivirus programs are wary of unsigned installers. If you have a code signing certificate, have the build sign the .exe:
+
+```js
+installer: {
+  windows: {
+    sign: 'signtool sign /fd sha256 /tr http://timestamp.digicert.com /td sha256 /a {file}',
+  },
+},
+```
+
+`{file}` is replaced with the .exe's path. Any signing tool works. The launcher finds its bundle with or without a signature.
+
+### Options
+
+| `installer.windows` | Default | |
+| --- | --- | --- |
+| `exe` | `true` | Build the .exe (it's skipped when `installer.gui` is false). |
+| `fileName` | `<id>-<version>-setup.exe` | |
+| `icon` | the config's `icon` | PNG (at most 256 px) or `.ico`. |
+| `company` | your authors | Shown in the file's properties. |
+| `sign` | none | A signing command containing `{file}`. |
 
 ## What it shows
 
@@ -124,7 +170,7 @@ Every text is escaped, and only https and embedded images are allowed, so a mist
 
 ## After Yapin’ updates
 
-The desktop app updates itself by replacing its install folder, which removes the client app. After an update, Yapin’ starts plain, and the installer shows **Needs repair**. Repair puts the client app back on top of the new version, keeping the person's plugins, themes and settings. Tell your users to run the installer again after Yapin’ updates. You can save them the unzip by telling them to keep the installer folder.
+The desktop app updates itself by replacing its install folder, which removes the client app. After an update, Yapin’ starts plain, and the installer shows **Needs repair**. Repair puts the client app back on top of the new version, keeping the person's plugins, themes and settings. Tell your users to run the installer again after Yapin’ updates. The same setup `.exe` (or installer folder) works for repairs, so they can keep it.
 
 `yapin-client repair` does the same from your project.
 

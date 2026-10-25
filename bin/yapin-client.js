@@ -90,6 +90,7 @@ async function runBuild(values, mode = values.mode ?? 'production') {
   ok(`Built in ${result.ms} ms: ${result.plugins.length} bundled plugin(s), ${result.themes.length} bundled theme(s), ${Math.round(readFileSync(join(result.payloadDir, 'runtime.js')).length / 1024)} kB runtime`);
   info(`payload     ${relative(process.cwd(), result.payloadDir)}`);
   if (result.installerDir) info(`installer   ${relative(process.cwd(), result.installerDir)}`);
+  if (result.exeFile) info(`windows     ${relative(process.cwd(), result.exeFile)}`);
   if (result.zipFile) info(`zip         ${relative(process.cwd(), result.zipFile)}`);
   if (result.userscriptFile) info(`userscript  ${relative(process.cwd(), result.userscriptFile)}`);
   return { config, root, result };
