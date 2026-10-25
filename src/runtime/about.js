@@ -73,6 +73,8 @@ export class AboutPage {
         c.ui.toast('Debug info copied', { type: 'success' });
       },
     });
+    if (c.welcome?.enabled) this.action('welcome', { label: 'Show welcome screen', order: 3, variant: 'ghost', run: () => c.welcome.show() });
+    if (c.whatsNew?.enabled && c.whatsNew.config.entries?.length) this.action('whatsNew', { label: "Show what's new", order: 4, variant: 'ghost', run: () => c.whatsNew.show() });
     if (c.native) {
       this.action('folder', { label: 'Open data folder', order: 1, run: () => c.native.openFolder('data') });
       this.action('safeMode', {

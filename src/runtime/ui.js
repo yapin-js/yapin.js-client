@@ -1,4 +1,5 @@
 import { SettingTypes } from './settings.js';
+import { builtinIcon } from '../shared/icons.js';
 import { safeURL, toArray } from './util.js';
 
 /**
@@ -77,6 +78,8 @@ export function svg(markup) {
   return globalThis.document.importNode(root, true);
 }
 
+const TOAST_ICONS = { info: 'info', success: 'check', warning: 'alertTriangle', error: 'alertCircle' };
+
 export const baseCSS = `
 .yc-page{display:flex;flex-direction:column;gap:4px;min-width:0}
 .yc-page h2{margin:0 0 12px}
@@ -111,10 +114,18 @@ export const baseCSS = `
 .yc-toasts{position:fixed;z-index:2147483000;bottom:20px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
 .yc-toast{pointer-events:auto;background:var(--bg-float,#1b1c21);color:var(--text,#ececf1);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:var(--radius,10px);padding:10px 14px;font-size:14px;max-width:min(520px,90vw);display:flex;gap:10px;align-items:center;animation:yc-in .15s ease-out}
 .yc-toast[data-type=success]{border-left:3px solid var(--success,#3fcf82)}
+.yc-toast[data-type=success] .yc-icon{color:var(--success,#3fcf82)}
 .yc-toast[data-type=error]{border-left:3px solid var(--danger,#f2555a)}
+.yc-toast[data-type=error] .yc-icon{color:var(--danger,#f2555a)}
 .yc-toast[data-type=warning]{border-left:3px solid var(--warning,#f5b544)}
+.yc-toast[data-type=warning] .yc-icon{color:var(--warning,#f5b544)}
+.yc-toast[data-type=info] .yc-icon{color:var(--accent)}
 .yc-backdrop{position:fixed;inset:0;z-index:2147482000;background:#0009;display:flex;align-items:center;justify-content:center;padding:16px;animation:yc-in .12s ease-out}
 .yc-dialog{background:var(--bg-float,#1b1c21);color:var(--text,#ececf1);border:1px solid var(--border);border-radius:calc(var(--radius,10px) + 4px);box-shadow:var(--shadow);width:min(460px,100%);max-height:90vh;overflow:auto;padding:20px}
+.yc-dialog-head{display:flex;align-items:center;gap:10px}
+.yc-dialog-head .yc-icon{width:22px;height:22px;color:var(--accent);flex-shrink:0}
+.yc-dialog-head.yc-danger .yc-icon{color:var(--danger,#f2555a)}
+.yc-dialog-head h3{margin:0 0 8px;font-size:18px}
 .yc-dialog h3{margin:0 0 8px;font-size:18px}
 .yc-dialog p{margin:0 0 12px;color:var(--text-muted);white-space:pre-wrap}
 .yc-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
@@ -173,10 +184,11 @@ export class UI {
     return h('div', { class: 'yc-empty' }, text);
   }
 
-  /** An icon from SVG markup (sanitized), an https/data image URL, or an element. */
+  /** An icon: a built-in name ('rocket', 'puzzle', …), SVG markup (sanitized), an https/data image URL, or an element. */
   icon(source) {
     if (!source) return null;
     if (source instanceof Node) return h('span', { class: 'yc-icon' }, source);
+    if (typeof source === 'string' && !source.includes('<') && !/^(https?:|data:)/.test(source)) source = builtinIcon(source) ?? source;
     const asSvg = svg(source);
     if (asSvg) return h('span', { class: 'yc-icon', attrs: { 'aria-hidden': 'true' } }, asSvg);
     const url = safeURL(source, { protocols: ['https:', 'data:'] });
@@ -392,22 +404,22 @@ export class UI {
   }
 
   /** Shows a short message at the bottom of the window. type: info | success | warning | error. */
-  toast(message, { type = 'info', timeout = 4000, action } = {}) {
+  toast(message, { type = 'info', timeout = 4000, action, icon = TOAST_ICONS[type] } = {}) {
     const doc = globalThis.document;
     if (!doc?.body) return () => {};
     if (!this.#toastRoot?.isConnected) {
       this.#toastRoot = h('div', { class: 'yc-toasts', attrs: { role: 'status', 'aria-live': 'polite' } });
       doc.body.appendChild(this.#toastRoot);
     }
-    const element = h('div', { class: 'yc-toast', dataset: { type } }, h('span', { class: 'yc-grow' }, message), action && this.button({ label: action.label, small: true, variant: 'ghost', onClick: () => (close(), action.onClick()) }));
+    const element = h('div', { class: 'yc-toast', dataset: { type } }, this.icon(icon), h('span', { class: 'yc-grow' }, message), action && this.button({ label: action.label, small: true, variant: 'ghost', onClick: () => (close(), action.onClick()) }));
     const close = () => element.remove();
     this.#toastRoot.appendChild(element);
     if (timeout > 0) setTimeout(close, timeout);
     return close;
   }
 
-  /** A modal dialog. Resolves with the value of the button pressed, or null when dismissed. */
-  dialog({ title, message, content, buttons = [{ label: 'OK', value: true }], dismissable = true } = {}) {
+  /** A modal dialog. Resolves with the value of the button pressed, or null when dismissed. `icon` shows next to the title. */
+  dialog({ title, icon, message, content, buttons = [{ label: 'OK', value: true }], dismissable = true } = {}) {
     const doc = globalThis.document;
     if (!doc?.body) return Promise.resolve(null);
     return new Promise((resolve) => {
@@ -426,7 +438,8 @@ export class UI {
         }
       };
       const actions = buttons.map((b) => this.button({ label: b.label, variant: b.variant ?? 'primary', onClick: async () => finish(typeof b.value === 'function' ? await b.value() : b.value) }));
-      const dialog = h('div', { class: 'yc-dialog', attrs: { role: 'dialog', 'aria-modal': 'true' } }, title && h('h3', null, title), message && h('p', null, message), content, h('div', { class: 'yc-dialog-actions' }, actions));
+      const head = title && (icon ? h('div', { class: ['yc-dialog-head', buttons.some((b) => b.variant === 'danger') && 'yc-danger'] }, this.icon(icon), h('h3', null, title)) : h('h3', null, title));
+      const dialog = h('div', { class: 'yc-dialog', attrs: { role: 'dialog', 'aria-modal': 'true' } }, head, message && h('p', null, message), content, h('div', { class: 'yc-dialog-actions' }, actions));
       const backdrop = h('div', { class: 'yc-backdrop', onMousedown: (event) => event.target === backdrop && dismissable && finish(null) }, dialog);
       doc.addEventListener('keydown', onKey, true);
       doc.body.appendChild(backdrop);
@@ -434,9 +447,10 @@ export class UI {
     });
   }
 
-  async confirm({ title = 'Are you sure?', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, content } = {}) {
+  async confirm({ title = 'Are you sure?', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, icon = danger ? 'alertTriangle' : null, content } = {}) {
     const value = await this.dialog({
       title,
+      icon,
       message,
       content,
       buttons: [

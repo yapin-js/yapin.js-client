@@ -7,6 +7,7 @@ import { Emitter } from './events.js';
 import { Host } from './host.js';
 import { Logger } from './logger.js';
 import { ModuleFinder } from './modules.js';
+import { Welcome, WhatsNew, onboardingCSS } from './onboarding.js';
 import { PageManager } from './pages.js';
 import { Patcher } from './patcher.js';
 import { PluginManager } from './plugins.js';
@@ -63,6 +64,8 @@ export class Client {
     this.plugins = new PluginManager(this, config.plugins ?? {}, { loadModule });
     this.badges = new BadgeManager(this, config.badges ?? {});
     this.userContent = new UserContent(this, { plugins: config.plugins ?? {}, themes: config.themes ?? {} });
+    this.welcome = config.welcome === false ? null : new Welcome(this, config.welcome ?? {});
+    this.whatsNew = config.whatsNew === false ? null : new WhatsNew(this, config.whatsNew ?? {});
     this.about = config.about === false ? null : new AboutPage(this, config.about ?? {});
     this.ready = new Promise((resolve) => {
       this.#readyResolve = resolve;
@@ -99,6 +102,7 @@ export class Client {
   async start(bundle = {}) {
     const config = this.config;
     this.styles.add(baseCSS, { id: 'framework', order: StyleOrder.framework });
+    this.styles.add(onboardingCSS, { id: 'framework-onboarding', order: StyleOrder.framework });
     for (const theme of bundle.themes ?? []) {
       try {
         this.themes.add(this.themes.parse(theme.text, { file: theme.file, source: 'bundled' }), { source: 'bundled', file: theme.file });
@@ -146,6 +150,7 @@ export class Client {
     this.badges.start();
     await this.plugins.startAll();
     if (this.safeMode) this.ui.toast(`${this.name} is in safe mode: plugins and themes are off.`, { type: 'warning', timeout: 8000 });
+    this.#maybeShowOnboarding();
     this.isReady = true;
     this.#readyResolve(this);
     this.events.emit('ready', this);
@@ -156,7 +161,7 @@ export class Client {
   #addBuiltinPages() {
     const pages = this.config.pages ?? {};
     if (this.about) {
-      this.pages.add({ id: 'about', title: this.config.about?.title ?? 'About', order: this.config.about?.order ?? 0, icon: this.config.about?.icon ?? null, render: (root, ctx) => this.about.render(root, ctx) });
+      this.pages.add({ id: 'about', title: this.config.about?.title ?? 'About', order: this.config.about?.order ?? 0, icon: this.config.about?.icon ?? 'info', render: (root, ctx) => this.about.render(root, ctx) });
     }
     if (pages.plugins !== false) this.pages.add(pluginsPage(this, pages.plugins ?? {}));
     if (pages.themes !== false) this.pages.add(themesPage(this, pages.themes ?? {}));
@@ -166,12 +171,23 @@ export class Client {
         id: 'settings',
         title: options.title ?? 'Settings',
         order: options.order ?? 5,
+        icon: options.icon ?? 'sliders',
         render: (root, ctx) => {
           const form = this.ui.form(this.settings, { context: this });
           root.append(this.ui.heading(options.title ?? 'Settings'), form.element);
           ctx.onDispose(form.dispose);
         },
       });
+    }
+  }
+
+  /** First run shows the welcome screen (and skips what's new for that first run); otherwise an update shows what's new. */
+  #maybeShowOnboarding() {
+    if (this.welcome?.shouldShow()) {
+      this.welcome.show();
+      this.whatsNew?.markSeen();
+    } else {
+      this.whatsNew?.maybeShow();
     }
   }
 

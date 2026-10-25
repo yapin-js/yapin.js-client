@@ -55,18 +55,41 @@ export const defaults = Object.freeze({
   pages: {
     section: null,
     position: 'end',
-    plugins: { title: 'Plugins', order: 10 },
-    themes: { title: 'Themes', order: 20 },
-    settings: { title: 'Settings', order: 5 },
+    plugins: { title: 'Plugins', order: 10, icon: 'puzzle' },
+    themes: { title: 'Themes', order: 20, icon: 'palette' },
+    settings: { title: 'Settings', order: 5, icon: 'sliders' },
   },
 
   about: {
     title: 'About',
     order: 0,
+    icon: 'info',
     intro: null,
     sections: {},
     fields: {},
     actions: {},
+  },
+
+  welcome: {
+    enabled: true,
+    icon: 'sparkles',
+    title: 'Welcome to {name}',
+    subtitle: null,
+    steps: [],
+    actionLabel: 'Get started',
+    dismissible: true,
+    dismissLabel: 'Skip',
+  },
+
+  whatsNew: {
+    enabled: true,
+    icon: 'rocket',
+    title: "What's new in {name} {version}",
+    subtitle: null,
+    entries: [],
+    actionLabel: 'Got it',
+    dismissible: true,
+    dismissLabel: null,
   },
 
   badges: {
