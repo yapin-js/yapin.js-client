@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- **Desktop**: fixed the client app freezing Yapin’ on start ("Yapin’ is taking too long to load", with no keyboard shortcuts working). The preload's injected script evaluated to the `Client` object, which `executeJavaScript` then tried to convert back to the preload; that object reaches `window` and the whole DOM, so the page hung before it finished loading. The script now evaluates to `undefined`.
+- **UI kit**: icons given as SVG markup without `xmlns` (the built-in icon set included) parsed as plain XML elements and drew nothing. `ui.svg()` and `ui.icon()` now add the SVG namespace when it's missing.
+- **Runtime**: a failure in the welcome or what's new screen is reported instead of stopping the client app from finishing start-up.
+- **Desktop**: `main.log` now records each page load, how long it took to reach `dom-ready`, load failures, preload errors and page errors, so a page that never loads can be diagnosed from the log alone.
+
 ## 0.1.3
 
 - **Installer**: fixed a crash in the Windows setup wizard when the target desktop app is already installed. The wizard runs the installer through the desktop app's own Node (`ELECTRON_RUN_AS_NODE`), which means the installer's own process shares the app's executable name; closing the app before install used to kill every process with that name, including the installer itself, mid-operation ("The installer stopped with an error", with no further detail). Closing the app is now done by PID, always excluding the installer's own process.
