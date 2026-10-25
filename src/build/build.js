@@ -66,6 +66,8 @@ export function runtimeConfig(config) {
     themes,
     pages: config.pages,
     about: config.about,
+    welcome: config.welcome,
+    whatsNew: config.whatsNew,
     badges: config.badges,
     api: config.api,
     host: config.host,
