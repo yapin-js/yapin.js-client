@@ -1,0 +1,10 @@
+{
+  "title": "__NAME__",
+  "tagline": "A client for Yapin’.",
+  "description": "Describe what __NAME__ adds to Yapin’ here. **Markdown-style** bold, *italic*, `code` and [links](https://www.yapin.gg) work.",
+  "accent": "#7c5cff",
+  "theme": "dark",
+  "features": [],
+  "screenshots": [],
+  "links": []
+}

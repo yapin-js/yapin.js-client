@@ -116,6 +116,13 @@ export class Client {
       }
     }
     this.#addBuiltinPages();
+    for (const source of config.badges?.sources ?? []) {
+      try {
+        this.badges.addProvider(source);
+      } catch (error) {
+        this.reportError(error, { where: `badge source ${source.id}` });
+      }
+    }
 
     const setup = bundle.entry?.default ?? bundle.entry?.setup;
     if (typeof setup === 'function') {

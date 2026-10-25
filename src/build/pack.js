@@ -322,6 +322,7 @@ function parseModule(source, file) {
         n++;
         if (at(n)?.type !== 'ident') fail('Destructuring in an export declaration is not supported; declare the names, then export them', at(n));
         exports.push([at(n).value, at(n).value]);
+        const firstName = n;
         for (n++; n < tokens.length; n++) {
           const tok = at(n);
           if (tok.depth !== 0) continue;
@@ -330,7 +331,8 @@ function parseModule(source, file) {
           if (tok.value === ',' && at(n + 1)?.type === 'ident') exports.push([at(n + 1).value, at(n + 1).value]);
         }
         edits.push({ start: t.start, end: next.start, text: '' });
-        k = n;
+        // Keep scanning inside the initializers: they may hold import.meta.
+        k = firstName + 1;
         continue;
       }
       if (next.value === '{') {

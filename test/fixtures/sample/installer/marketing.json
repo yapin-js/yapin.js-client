@@ -1,0 +1,8 @@
+{
+  "title": "Sample <Client>",
+  "tagline": "Tag **bold**",
+  "features": [{ "icon": "⚡", "title": "Fast", "text": "Very [fast](https://example.com)" }],
+  "screenshots": [],
+  "changelog": [{ "version": "1.2.3", "notes": ["First"] }],
+  "terms": { "text": "Be nice." }
+}

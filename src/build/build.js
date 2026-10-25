@@ -1,0 +1,299 @@
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { pack } from './pack.js';
+import { readGitInfo } from './git.js';
+import { zipDirectory } from './zip.js';
+import { apiVersion, version as frameworkVersion } from '../shared/constants.js';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SRC = join(HERE, '..');
+const BUILD_MARKER = '.yapin-client-build';
+const MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' };
+
+function sha256(data) {
+  return createHash('sha256').update(data).digest('hex');
+}
+
+function toPosix(p) {
+  return p.split(sep).join('/');
+}
+
+/** Plugin files in a folder: `name.js` / `name.mjs`, or `name/index.js`. Names starting with _ or . are skipped. */
+export function findPlugins(dirs) {
+  const out = [];
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir).sort()) {
+      if (/^[_.]/.test(name)) continue;
+      const full = join(dir, name);
+      if (statSync(full).isDirectory()) {
+        const index = ['index.js', 'index.mjs'].map((f) => join(full, f)).find((f) => existsSync(f));
+        if (index) out.push(index);
+      } else if (/\.m?js$/.test(name)) {
+        out.push(full);
+      }
+    }
+  }
+  return out;
+}
+
+/** Theme files in a folder: every `.css` (not starting with _ or .). */
+export function findThemes(dirs) {
+  const out = [];
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir).sort()) if (/\.css$/i.test(name) && !/^[_.]/.test(name)) out.push(join(dir, name));
+  }
+  return out;
+}
+
+/** The part of the config the running client app gets (plain data, no build paths). */
+export function runtimeConfig(config) {
+  const { dirs: _pd, ...plugins } = config.plugins;
+  const { dirs: _td, css: _css, ...themes } = config.themes;
+  return {
+    origins: config.origins,
+    settings: config.settings,
+    runtime: config.runtime,
+    plugins,
+    themes,
+    pages: config.pages,
+    about: config.about,
+    badges: config.badges,
+    api: config.api,
+    host: config.host,
+    desktop: config.desktop,
+  };
+}
+
+function dataURI(file, { maxBytes = 5_000_000 } = {}) {
+  if (typeof file !== 'string' || /^(https?:|data:)/.test(file)) return file;
+  if (!existsSync(file)) throw new Error(`Installer asset not found: ${file}`);
+  const data = readFileSync(file);
+  if (data.length > maxBytes) throw new Error(`Installer asset ${file} is over ${Math.round(maxBytes / 1e6)} MB`);
+  const mime = MIME[extname(file).toLowerCase()];
+  if (!mime) throw new Error(`Installer asset ${file}: use png, jpg, gif, webp, svg or ico`);
+  return `data:${mime};base64,${data.toString('base64')}`;
+}
+
+/** The installer's settings, with every local image inlined so the installer is self-contained. */
+export function installerConfig(config, manifest) {
+  const m = { ...config.installer.marketing };
+  for (const key of ['logo', 'background', 'icon']) if (m[key] && !/^(#|linear-gradient|radial-gradient)/.test(m[key])) m[key] = dataURI(m[key]);
+  if (m.css && existsSync(m.css)) m.css = readFileSync(m.css, 'utf8');
+  if (Array.isArray(m.screenshots)) m.screenshots = m.screenshots.map((s) => ({ ...s, src: dataURI(s.src) }));
+  if (Array.isArray(m.features)) m.features = m.features.map((f) => ({ ...f, icon: f.icon && /^[A-Za-z]:|^[/.]/.test(f.icon) ? dataURI(f.icon) : f.icon }));
+  if (m.terms?.file) m.terms = { ...m.terms, text: readFileSync(m.terms.file, 'utf8'), file: undefined };
+  if (!m.logo && config.icon) m.logo = dataURI(config.icon);
+  return {
+    preset: config.installer.preset,
+    marketing: m,
+    target: config.installer.target,
+    closeApp: config.installer.closeApp,
+    launchAfter: config.installer.launchAfter,
+    gui: config.installer.gui,
+    app: { id: manifest.id, name: manifest.name, version: manifest.version, description: manifest.description, authors: manifest.authors, links: manifest.links },
+  };
+}
+
+function launchers(name) {
+  const cmd = `@echo off
+setlocal
+title ${name.replace(/[&|<>^%]/g, '')} installer
+set "HERE=%~dp0"
+set "APP=%LOCALAPPDATA%\\Programs\\yapper-desktop\\Yapper.exe"
+if not exist "%APP%" set "APP=%PROGRAMFILES%\\Yapper\\Yapper.exe"
+if exist "%APP%" (
+  set "ELECTRON_RUN_AS_NODE=1"
+  "%APP%" "%HERE%installer.mjs" %*
+  goto done
+)
+where node >nul 2>nul
+if %ERRORLEVEL%==0 (
+  node "%HERE%installer.mjs" %*
+  goto done
+)
+echo Couldn't find the Yapin' desktop app. Install it from https://www.yapin.gg first.
+pause
+:done
+endlocal
+`;
+  const sh = `#!/bin/sh
+# Runs the installer with the desktop app's own Node, or with node if it's installed.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+for APP in "/Applications/Yapper.app/Contents/MacOS/Yapper" "$HOME/Applications/Yapper.app/Contents/MacOS/Yapper" "/opt/Yapper/yapper-desktop" "/opt/yapper-desktop/yapper-desktop" "/usr/lib/yapper-desktop/yapper-desktop"; do
+  if [ -x "$APP" ]; then
+    ELECTRON_RUN_AS_NODE=1 exec "$APP" "$HERE/installer.mjs" "$@"
+  fi
+done
+if command -v node >/dev/null 2>&1; then
+  exec node "$HERE/installer.mjs" "$@"
+fi
+echo "Couldn't find the Yapin' desktop app. Install it from https://www.yapin.gg first."
+exit 1
+`;
+  return { cmd: cmd.replace(/\n/g, '\r\n'), sh };
+}
+
+function userscript(config, manifest, runtime) {
+  const web = config.web;
+  const matches = web.matches ?? config.origins.map((o) => `${o}/*`);
+  const header = [
+    '// ==UserScript==',
+    `// @name         ${manifest.name}`,
+    `// @namespace    ${web.namespace ?? config.links.source ?? config.links.website ?? `yapin-client/${manifest.id}`}`,
+    `// @version      ${manifest.version}`,
+    manifest.description && `// @description  ${manifest.description.replace(/\n/g, ' ')}`,
+    manifest.authors?.length && `// @author       ${manifest.authors.map((a) => a.name).join(', ')}`,
+    ...matches.map((m) => `// @match        ${m}`),
+    '// @run-at       document-start',
+    '// @grant        none',
+    web.updateURL && `// @updateURL    ${web.updateURL}`,
+    web.downloadURL && `// @downloadURL  ${web.downloadURL}`,
+    '// ==/UserScript==',
+  ].filter(Boolean);
+  const args = { manifest, safeMode: false, environment: { userscript: true } };
+  return `${header.join('\n')}\n\n(${runtime})().default(${JSON.stringify(args)});\n`;
+}
+
+/** Empties the output folder, but only one an earlier build made, and never the project or a parent of it. */
+function prepareOutDir(dir, root) {
+  const projectInside = relative(dir, root);
+  if (projectInside === '' || (!projectInside.startsWith('..') && !isAbsolute(projectInside))) throw new Error(`outDir (${dir}) can't be the project folder or contain it`);
+  if (existsSync(dir)) {
+    const entries = readdirSync(dir);
+    if (entries.length && !entries.includes(BUILD_MARKER)) {
+      throw new Error(`${dir} has files that weren't made by a build; refusing to delete them. Pick another outDir or empty it.`);
+    }
+    rmSync(dir, { recursive: true, force: true });
+  }
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, BUILD_MARKER), 'Made by yapin.js-client build. This whole folder is deleted on the next build.\n');
+}
+
+/**
+ * Builds a client app into `config.outDir`:
+ *   payload/            what gets installed: manifest.json, runtime.js, preload.cjs, shim.cjs
+ *   installer/<id>/     the branded installer: launchers, installer.mjs, installer.json, payload/
+ *   <id>-<version>-installer.zip
+ *   <id>.user.js        the web version, for userscript managers
+ */
+export async function build(config, { root, mode = 'production', onStep = () => {}, installer = true } = {}) {
+  const started = Date.now();
+  const warnings = [];
+  const outDir = config.outDir;
+  prepareOutDir(outDir, root);
+
+  onStep('Collecting plugins and themes');
+  const pluginFiles = findPlugins(config.plugins.dirs);
+  const themeFiles = findThemes(config.themes.dirs);
+  const baseCSS = config.themes.css ? readFileSync(config.themes.css, 'utf8') : '';
+
+  const imports = [`import { boot } from ${JSON.stringify(toPosix(join(SRC, 'runtime', 'boot.js')))};`];
+  imports.push(config.entry ? `import * as entry from ${JSON.stringify(toPosix(config.entry))};` : 'const entry = null;');
+  pluginFiles.forEach((file, i) => imports.push(`import plugin${i} from ${JSON.stringify(toPosix(file))};`));
+  themeFiles.forEach((file, i) => imports.push(`import theme${i} from ${JSON.stringify(toPosix(file))};`));
+  const virtualEntry = `${imports.join('\n')}
+const plugins = [${pluginFiles.map((_, i) => `plugin${i}`).join(', ')}];
+const themes = [${themeFiles.map((file, i) => `{ file: ${JSON.stringify(basename(file))}, text: theme${i} }`).join(', ')}];
+export default (args) => boot(args, { entry, plugins, themes });
+`;
+
+  onStep('Bundling the runtime');
+  const bundled = pack({
+    entry: 'yapin-client:entry',
+    root,
+    virtual: { 'yapin-client:entry': { code: virtualEntry, dir: root } },
+    alias: { 'yapin.js-client/runtime': join(SRC, 'runtime', 'index.js') },
+    urlPrefix: `yapin-client://${config.id}/`,
+  });
+  const runtime = bundled.code;
+
+  const git = config.git === false ? null : readGitInfo(root);
+  if (config.git !== false && !git) warnings.push('Not a git repository (or git is not installed); the About page will have no source info');
+
+  const manifest = {
+    id: config.id,
+    name: config.name,
+    version: config.version,
+    description: config.description ?? '',
+    authors: config.authors,
+    links: config.links,
+    framework: frameworkVersion,
+    apiVersion,
+    build: { time: new Date().toISOString(), mode },
+    git,
+    baseCSS,
+    config: runtimeConfig(config),
+    files: {},
+  };
+  if (mode === 'development') {
+    manifest.config.runtime = { ...manifest.config.runtime, exposeGlobal: manifest.config.runtime.exposeGlobal ?? camel(config.id), logLevel: manifest.config.runtime.logLevel ?? 'debug' };
+  }
+
+  onStep('Writing the payload');
+  const payloadDir = join(outDir, 'payload');
+  mkdirSync(payloadDir, { recursive: true });
+  const files = {
+    'runtime.js': runtime,
+    'preload.cjs': readFileSync(join(SRC, 'desktop', 'preload.cjs'), 'utf8'),
+    'shim.cjs': readFileSync(join(SRC, 'desktop', 'shim.cjs'), 'utf8'),
+  };
+  for (const [name, text] of Object.entries(files)) {
+    writeFileSync(join(payloadDir, name), text);
+    manifest.files[name] = sha256(text);
+  }
+  writeFileSync(join(payloadDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  if (config.icon && existsSync(config.icon)) {
+    mkdirSync(join(payloadDir, 'assets'), { recursive: true });
+    copyFileSync(config.icon, join(payloadDir, 'assets', `icon${extname(config.icon)}`));
+  }
+
+  let userscriptFile = null;
+  if (config.web.userscript !== false) {
+    onStep('Writing the userscript');
+    userscriptFile = join(outDir, `${config.id}.user.js`);
+    writeFileSync(userscriptFile, userscript(config, manifest, runtime));
+  }
+
+  let installerDir = null;
+  let zipFile = null;
+  if (installer) {
+    onStep('Building the installer');
+    installerDir = join(outDir, 'installer', config.id);
+    mkdirSync(installerDir, { recursive: true });
+    const installerBundle = pack({ entry: join(SRC, 'installer', 'main.js'), format: 'module', root: SRC });
+    writeFileSync(join(installerDir, 'installer.mjs'), installerBundle.code);
+    writeFileSync(join(installerDir, 'installer.json'), JSON.stringify(installerConfig(config, manifest), null, 2));
+    cpSync(payloadDir, join(installerDir, 'payload'), { recursive: true });
+    const { cmd, sh } = launchers(config.name);
+    const safeName = config.name.replace(/[^\w .-]+/g, '').trim() || config.id;
+    writeFileSync(join(installerDir, `Install ${safeName}.cmd`), cmd);
+    writeFileSync(join(installerDir, 'install.sh'), sh);
+    writeFileSync(join(installerDir, `Install ${safeName}.command`), sh);
+    for (const file of ['install.sh', `Install ${safeName}.command`]) {
+      try {
+        chmodSync(join(installerDir, file), 0o755);
+      } catch {
+        // Windows has no exec bit; the zip carries it instead
+      }
+    }
+    writeFileSync(
+      join(installerDir, 'README.txt'),
+      `${config.name} ${config.version}\r\n\r\nWindows: double-click "Install ${safeName}.cmd".\r\nmacOS: double-click "Install ${safeName}.command".\r\nLinux: run ./install.sh\r\n\r\nThe installer opens in your browser. Close the Yapin' desktop app first, or the installer will offer to.\r\nTo remove ${config.name}, run the installer again and choose Uninstall.\r\n`,
+    );
+    if (config.installer.zip !== false) {
+      zipFile = join(outDir, `${config.id}-${config.version}-installer.zip`);
+      zipDirectory(installerDir, zipFile, { prefix: `${config.id}-installer` });
+    }
+  }
+
+  writeFileSync(join(outDir, 'build.json'), JSON.stringify({ id: config.id, version: config.version, mode, time: manifest.build.time, plugins: pluginFiles.map((f) => toPosix(relative(root, f))), themes: themeFiles.map((f) => toPosix(relative(root, f))), runtimeBytes: runtime.length, hash: bundled.hash }, null, 2));
+  return { outDir, payloadDir, installerDir, zipFile, userscriptFile, manifest, plugins: pluginFiles, themes: themeFiles, files: bundled.files, warnings, ms: Date.now() - started };
+}
+
+function camel(id) {
+  return id.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase()).replace(/^[0-9]/, '_$&');
+}

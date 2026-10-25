@@ -1,0 +1,9 @@
+/**
+ * @id dark-blue
+ * @name Dark Blue
+ * @version 1.0.0
+ * @author Tester <https://example.com>
+ * @var --accent color #3355ff Accent colour
+ * @var --radius number 8 Corners | min=0 max=20 unit=px
+ */
+.msg { border-radius: var(--radius); }
