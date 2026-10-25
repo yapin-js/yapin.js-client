@@ -7,6 +7,7 @@ import { pack } from './pack.js';
 import { readGitInfo } from './git.js';
 import { zipDirectory } from './zip.js';
 import { compileLauncher, createSetupExe, findCsc, PREBUILT_LAUNCHER, signFile } from './windows.js';
+import { buildNsisExe, findMakensis } from './nsis.js';
 import { defaultTarget } from '../installer/paths.js';
 import { deepMerge } from '../runtime/util.js';
 import { apiVersion, version as frameworkVersion } from '../shared/constants.js';
@@ -121,32 +122,38 @@ exit 1
 }
 
 /**
- * The Windows installer: one .exe with the installer folder inside. On Windows the launcher is compiled
- * for this client app (its name, version and icon); elsewhere the prebuilt generic one is used.
+ * The Windows installer: one .exe with the installer folder inside. With NSIS available it's a setup
+ * wizard (see nsis.js). Otherwise it's the small launcher that opens the installer page in the browser,
+ * compiled for this client app on Windows (its name, version and icon), or the prebuilt generic one.
  */
-function buildSetupExe(config, { installerDir, outDir }) {
+function buildSetupExe(config, { settings, installerDir, outDir }) {
   const windows = config.installer.windows ?? {};
   const file = join(outDir, windows.fileName ?? `${config.id}-${config.version}-setup.exe`);
+  const icon = windows.icon ?? config.icon ?? null;
+  const exeIcon = icon && /\.(png|ico)$/i.test(icon) ? icon : null;
+  const company = windows.company ?? config.authors?.map((a) => a.name).join(', ') ?? '';
+  const target = deepMerge(structuredClone(defaultTarget), config.installer.target ?? {});
+  const exeName = target.executable?.win32 ?? 'Yapper.exe';
+  const exe = (target.locations?.win32 ?? []).map((location) => `${location.replace(/[\\/]+$/, '')}\\${exeName}`);
+
+  const makensis = windows.nsis === false ? null : findMakensis({ configured: windows.nsis });
+  if (makensis) {
+    buildNsisExe({ makensis, installer: settings, source: installerDir, out: file, icon: exeIcon, sidebar: windows.sidebar, header: windows.header, company, description: config.description, exeLocations: exe });
+    if (windows.sign) signFile(windows.sign, file);
+    return { file, kind: 'nsis', warning: null };
+  }
+
+  const warnings = [];
+  if (typeof windows.nsis === 'string') warnings.push(`installer.windows.nsis: ${windows.nsis} didn't run, so the Windows .exe opens the installer in the browser instead of the setup wizard.`);
+  else if (windows.nsis !== false) warnings.push("NSIS isn't installed, so the Windows .exe opens the installer in the browser instead of the setup wizard. Install NSIS (https://nsis.sourceforge.io, apt install nsis, or brew install makensis) for the wizard.");
   let launcher = PREBUILT_LAUNCHER;
-  let warning = null;
   const work = mkdtempSync(join(tmpdir(), 'yc-setup-'));
   try {
     if (findCsc()) {
-      const icon = windows.icon ?? config.icon ?? null;
-      launcher = compileLauncher({
-        out: join(work, 'launcher.exe'),
-        name: config.name,
-        version: config.version,
-        description: config.description,
-        company: windows.company ?? config.authors?.map((a) => a.name).join(', ') ?? '',
-        icon: icon && /\.(png|ico)$/i.test(icon) ? icon : null,
-      });
+      launcher = compileLauncher({ out: join(work, 'launcher.exe'), name: config.name, version: config.version, description: config.description, company, icon: exeIcon });
     } else {
-      warning = 'Built the Windows .exe with the generic launcher (no csc.exe here), so it has no custom icon or file details. Build on Windows for those.';
+      warnings.push('Built the Windows .exe with the generic launcher (no csc.exe here), so it has no custom icon or file details. Build on Windows for those.');
     }
-    const target = deepMerge(structuredClone(defaultTarget), config.installer.target ?? {});
-    const exeName = target.executable?.win32 ?? 'Yapper.exe';
-    const exe = (target.locations?.win32 ?? []).map((location) => `${location.replace(/[\\/]+$/, '')}\\${exeName}`);
     createSetupExe({
       launcher,
       installerDir,
@@ -158,7 +165,7 @@ function buildSetupExe(config, { installerDir, outDir }) {
     rmSync(work, { recursive: true, force: true });
   }
   if (windows.sign) signFile(windows.sign, file);
-  return { file, warning };
+  return { file, kind: 'launcher', warning: warnings.join(' ') || null };
 }
 
 function userscript(config, manifest, runtime) {
@@ -286,13 +293,15 @@ export default (args) => boot(args, { entry, plugins, themes });
   let installerDir = null;
   let zipFile = null;
   let exeFile = null;
+  let exeKind = null;
   if (installer) {
     onStep('Building the installer');
     installerDir = join(outDir, 'installer', config.id);
     mkdirSync(installerDir, { recursive: true });
     const installerBundle = pack({ entry: join(SRC, 'installer', 'main.js'), format: 'module', root: SRC });
     writeFileSync(join(installerDir, 'installer.mjs'), installerBundle.code);
-    writeFileSync(join(installerDir, 'installer.json'), JSON.stringify(installerConfig(config, manifest), null, 2));
+    const settings = installerConfig(config, manifest);
+    writeFileSync(join(installerDir, 'installer.json'), JSON.stringify(settings, null, 2));
     cpSync(payloadDir, join(installerDir, 'payload'), { recursive: true });
     const sh = launcherScript();
     const safeName = config.name.replace(/[^\w .-]+/g, '').trim() || config.id;
@@ -316,14 +325,15 @@ export default (args) => boot(args, { entry, plugins, themes });
     const windows = config.installer.windows ?? {};
     if (windows.exe !== false && config.installer.gui !== false) {
       onStep('Building the Windows setup .exe');
-      const built = buildSetupExe(config, { installerDir, outDir });
+      const built = buildSetupExe(config, { settings, installerDir, outDir });
       exeFile = built.file;
+      exeKind = built.kind;
       if (built.warning) warnings.push(built.warning);
     }
   }
 
   writeFileSync(join(outDir, 'build.json'), JSON.stringify({ id: config.id, version: config.version, mode, time: manifest.build.time, plugins: pluginFiles.map((f) => toPosix(relative(root, f))), themes: themeFiles.map((f) => toPosix(relative(root, f))), runtimeBytes: runtime.length, hash: bundled.hash }, null, 2));
-  return { outDir, payloadDir, installerDir, zipFile, exeFile, userscriptFile, manifest, plugins: pluginFiles, themes: themeFiles, files: bundled.files, warnings, ms: Date.now() - started };
+  return { outDir, payloadDir, installerDir, zipFile, exeFile, exeKind, userscriptFile, manifest, plugins: pluginFiles, themes: themeFiles, files: bundled.files, warnings, ms: Date.now() - started };
 }
 
 function camel(id) {

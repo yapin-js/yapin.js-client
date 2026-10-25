@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { runCli, style } from './cli.js';
+import { runNsis } from './nsis.js';
 import { createOperations } from './operations.js';
 import { openBrowser, startServer } from './server.js';
 
@@ -52,6 +53,7 @@ async function main() {
       path: { type: 'string', multiple: true },
       index: { type: 'string' },
       help: { type: 'boolean', short: 'h' },
+      nsis: { type: 'string' },
     },
   });
   if (values.help) {
@@ -62,6 +64,9 @@ async function main() {
   const operations = createOperations({ config: installer, payload: join(here, 'payload'), extraLocations: values.path ?? [] });
   const command = positionals[0];
   const options = { yes: values.yes, close: values.close, purge: values.purge, index: values.index, launch: values['no-launch'] ? false : undefined };
+
+  // The Windows setup wizard (NSIS) asks with --nsis <file> and reads the answer from that file.
+  if (values.nsis) return runNsis({ operations, command, options, file: values.nsis });
 
   // The Windows setup .exe passes --gui: it has no terminal, but the page doesn't need one.
   if (values.cli || command || installer.gui === false || (!process.stdout.isTTY && !values.gui)) {

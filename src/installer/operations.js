@@ -42,16 +42,21 @@ export function createOperations({ config, payload, platform = process.platform,
     return found;
   };
 
-  const ensureClosed = async (allowClose) => {
+  const ensureClosed = async (allowClose, onStep) => {
     if (!processName || !(await isRunning(processName, platform))) return;
     if (!allowClose) throw new InstallError(`${target.productName} is running`, { code: 'RUNNING', hint: `Close ${target.productName} (check the system tray too), or let the installer close it.` });
+    onStep(`Closing ${target.productName}`);
     if (!(await closeApp(processName, { platform }))) throw new InstallError(`Couldn't close ${target.productName}`, { code: 'RUNNING', hint: 'Close it yourself, then try again.' });
   };
 
-  const run = async (fn) => {
+  /** Runs one action, collecting its steps (and passing each to `onStep` as it happens). */
+  const run = async (fn, onStep = () => {}) => {
     const steps = [];
     try {
-      const result = await fn((step) => steps.push(step));
+      const result = await fn((step) => {
+        steps.push(step);
+        onStep(step);
+      });
       return { ok: true, steps, result };
     } catch (error) {
       return { ok: false, steps, error: error.message, code: error.code ?? 'FAILED', hint: error.hint ?? null };
@@ -72,34 +77,34 @@ export function createOperations({ config, payload, platform = process.platform,
       };
     },
 
-    install({ index, close = false, launch = false } = {}) {
-      return run(async (onStep) => {
+    install({ index, close = false, launch = false, onStep } = {}) {
+      return run(async (step) => {
         const found = pick(index);
-        await ensureClosed(close);
-        const result = install({ resources: found.resources, payload, target, onStep });
+        await ensureClosed(close, step);
+        const result = install({ resources: found.resources, payload, target, onStep: step });
         if (launch && found.executable) launchApp(found.executable, { platform });
         return result;
-      });
+      }, onStep);
     },
 
-    repair({ index, close = false, launch = false } = {}) {
-      return run(async (onStep) => {
+    repair({ index, close = false, launch = false, onStep } = {}) {
+      return run(async (step) => {
         const found = pick(index);
-        await ensureClosed(close);
-        const result = repair({ resources: found.resources, payload, target, id: manifest.id, onStep });
+        await ensureClosed(close, step);
+        const result = repair({ resources: found.resources, payload, target, id: manifest.id, onStep: step });
         if (launch && found.executable) launchApp(found.executable, { platform });
         return result;
-      });
+      }, onStep);
     },
 
-    uninstall({ index, purge = false, close = false, launch = false } = {}) {
-      return run(async (onStep) => {
+    uninstall({ index, purge = false, close = false, launch = false, onStep } = {}) {
+      return run(async (step) => {
         const found = pick(index);
-        await ensureClosed(close);
-        const result = uninstall({ resources: found.resources, target, id: manifest.id, purge, onStep });
+        await ensureClosed(close, step);
+        const result = uninstall({ resources: found.resources, target, id: manifest.id, purge, onStep: step });
         if (launch && found.executable) launchApp(found.executable, { platform });
         return result;
-      });
+      }, onStep);
     },
 
     launch({ index } = {}) {
