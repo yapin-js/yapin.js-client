@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Installer**: the Windows `setup.exe` is now a setup wizard built with NSIS (Welcome, License, a page to choose Install, Update, Repair or Uninstall, progress with Show details, and Finish with Open Yapin’), branded with the logo and accent colour, and scriptable with `/S`, `/UNINSTALL` and `/PURGE`. Building it needs NSIS; without it, the build makes the browser launcher as before. New options: `installer.windows.nsis`, `sidebar` and `header`, and `setup*` strings.
+
 ## 0.1.0
 
 The first release.

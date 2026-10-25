@@ -51,7 +51,7 @@ export const defaultStrings = Object.freeze({
   setupDoneTitle: 'Completed',
   setupDoneText: 'Setup finished.',
   setupFailedTitle: 'Setup Failed',
-  setupFailedText: 'Nothing was changed. Click Show details for more.',
+  setupFailedText: 'Nothing was changed. The details are below.',
   setupFailed: 'The installer stopped with an error.',
   setupStillRunning: '{product} is still open. Close it (check the system tray too), then click Next again.',
   setupFinishTitle: 'Completing {name} Setup',

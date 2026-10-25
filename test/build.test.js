@@ -61,7 +61,9 @@ test('config file loading reads marketing json and resolves paths', async () => 
 test('build: payload, installer, zip, userscript; the runtime boots', async () => {
   const dir = copyFixture();
   const { config, root } = await loadConfig({ cwd: dir });
+  config.installer.windows.nsis = false; // the browser launcher, whose bundle is checked below (nsis.test.js covers the wizard)
   const result = await build(config, { root });
+  assert.equal(result.exeKind, 'launcher');
   assert.deepEqual(result.plugins.map((p) => p.replace(/\\/g, '/').split('/plugins/')[1]), ['folder-plugin/index.js', 'single.js']);
   for (const file of ['payload/manifest.json', 'payload/runtime.js', 'payload/preload.cjs', 'payload/shim.cjs', 'sample-client.user.js', 'sample-client-1.2.3-installer.zip', 'installer/sample-client/installer.mjs', 'installer/sample-client/installer.json', 'installer/sample-client/install.sh', 'installer/sample-client/Install Sample Client.command', 'sample-client-1.2.3-setup.exe']) {
     assert.ok(existsSync(join(result.outDir, file)), file);

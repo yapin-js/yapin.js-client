@@ -274,6 +274,7 @@ RequestExecutionLevel user
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
+!include "FileFunc.nsh"
 
 Name ${q(app.name)}
 OutFile ${q(out)}
@@ -350,7 +351,9 @@ Function RunInstaller
   \${Else}
     System::Call 'kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", p 0)'
   \${EndIf}
+  SetDetailsPrint none
   SetOutPath "$PLUGINSDIR\\app"
+  SetDetailsPrint lastused
   \${If} $R8 == "log"
     nsExec::ExecToLog '"$Runtime" "$PLUGINSDIR\\app\\installer.mjs" $R9'
   \${Else}
@@ -358,7 +361,9 @@ Function RunInstaller
   \${EndIf}
   Pop $R0
   System::Call 'kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", p 0)'
+  SetDetailsPrint none
   SetOutPath "$TEMP"
+  SetDetailsPrint lastused
 FunctionEnd
 
 ; The desktop app's own Node (Electron run as Node), or node.exe.
@@ -428,6 +433,18 @@ Function .onInit
   StrCpy $Index 0
   StrCpy $Purge 0
   Call DefaultAction
+  ; Silent mode (/S) does what Next would, or uninstalls with /UNINSTALL (and deletes data with /PURGE).
+  \${GetParameters} $R0
+  ClearErrors
+  \${GetOptions} $R0 "/UNINSTALL" $R1
+  \${IfNot} \${Errors}
+    StrCpy $Action "uninstall"
+  \${EndIf}
+  ClearErrors
+  \${GetOptions} $R0 "/PURGE" $R1
+  \${IfNot} \${Errors}
+    StrCpy $Purge 1
+  \${EndIf}
 FunctionEnd
 
 Function ChoosePage
@@ -467,6 +484,7 @@ Function ChoosePage
     SendMessage $R0 \${WM_SETFONT} $R1 0
     \${NSD_CreateLabel} 0 11u 100% 12u ""
     Pop $Where
+    \${NSD_AddStyle} $Where 0x8000 ; SS_PATHELLIPSIS: long paths lose their middle, not their end
   \${EndIf}
   \${NSD_CreateLabel} 0 28u 100% 10u ""
   Pop $State
@@ -705,10 +723,9 @@ FunctionEnd
 `;
 }
 
-/** Text NSIS shows on the license page: UTF-16 with a byte order mark, so any language works. */
+/** Text NSIS shows on the license page (its title is the page's heading): UTF-16 with a byte order mark, so any language works. */
 function licenseFile(installer) {
-  const terms = installer.marketing.terms;
-  const text = `${terms.title ? `${terms.title}\r\n\r\n` : ''}${String(terms.text).replace(/\r?\n/g, '\r\n')}`;
+  const text = String(installer.marketing.terms.text).replace(/\r?\n/g, '\r\n');
   return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
 }
 

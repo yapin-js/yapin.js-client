@@ -23,13 +23,41 @@ Every launcher runs `installer.mjs` with the Node that's built into the Yapin’
 
 ## The Windows .exe
 
-`<id>-<version>-setup.exe` is a small launcher (about 13 kB, written in C#) with the whole installer folder compressed onto its end. When someone runs it, it:
+`<id>-<version>-setup.exe` is a setup wizard, the kind people know from other Windows programs. It's built with [NSIS](https://nsis.sourceforge.io) (the Nullsoft Scriptable Install System) and has its pages:
 
-1. unpacks the installer into a new private folder in their temp directory;
-2. finds the desktop app (the places in [Targets](#targets), plus any you add) and runs the installer with its Node, with no console window;
-3. waits, then deletes the folder. If the installer fails, the error is shown in a message box.
+1. **Welcome**, with your logo down the side, your description and the "unofficial modification" notice.
+2. **License**, when `marketing.terms` has text. With `requireAccept`, Next stays disabled until the box is ticked.
+3. **Choose an option**: the desktop install it found (a list, when there are several) and what's there, then Install, Update, Reinstall or Repair, and Uninstall (with "Also delete my installed plugins, themes and settings"). Next is labelled with what it will do. If Yapin’ is open it says so, and asks before closing it (see `installer.closeApp`).
+4. **Installing**, with a progress bar and **Show details** for each step. If something goes wrong, the error is shown and nothing is left half-done.
+5. **Finish**, with **Open Yapin’** (ticked unless `installer.launchAfter` is false).
 
-It runs as the current user (no administrator prompt), like the per-user desktop app it installs into.
+The wizard does the work with the same installer as everywhere else: it unpacks the installer folder to a temporary folder, runs it with the desktop app's Node (the places in [Targets](#targets), plus any you add) with no console window, and removes the folder when it closes. It runs as the current user (no administrator prompt), like the per-user desktop app it installs into.
+
+| Run as | Does |
+| --- | --- |
+| `nebula-setup.exe` | Opens the wizard. |
+| `nebula-setup.exe /S` | Silent: does what Next would (install, update, or repair) with no window. Exits with 0 when it worked. |
+| `nebula-setup.exe /S /UNINSTALL [/PURGE]` | Silent uninstall; `/PURGE` also deletes installed plugins, themes and settings. |
+
+The texts are in `marketing.strings` (the keys starting with `setup`, plus `install`, `launch`, `purge`, `accept` and the messages shared with the page), so they can be changed or translated.
+
+### Pictures, name, version and icon
+
+The side picture (164×314) is your `accent` colour with your logo on it, and the top-right picture (150×57) is your logo on white. The logo is `marketing.logo`, or the config's `icon`, as a PNG. To use your own pictures instead, set `installer.windows.sidebar` and `installer.windows.header` to `.bmp` files of those sizes.
+
+The .exe shows your name, description, version and authors in its file properties, and your icon (`installer.windows.icon`, or the config's `icon`: a PNG of at most 256×256 pixels, or an `.ico`) in Explorer and the taskbar.
+
+### Building it
+
+Building the wizard needs NSIS 3 on the machine that runs `yapin-client build`. It's found in the usual install folders, on the `PATH`, in the `MAKENSIS` environment variable, or at `installer.windows.nsis` (a path to `makensis`).
+
+| | |
+| --- | --- |
+| Windows | The installer from [nsis.sourceforge.io](https://nsis.sourceforge.io/Download), or `winget install NSIS.NSIS` |
+| macOS | `brew install makensis` |
+| Linux | `sudo apt install nsis` (or your distribution's `nsis` package) |
+
+Without NSIS, the build still makes a `setup.exe`, the simpler kind: a small launcher (written in C#) that opens the [installer page](#what-it-shows) in the browser. The build warns when that happens. Set `installer.windows.nsis` to `false` to always make that kind. It takes commands too:
 
 | Run as | Does |
 | --- | --- |
@@ -37,11 +65,7 @@ It runs as the current user (no administrator prompt), like the per-user desktop
 | `nebula-setup.exe install --yes` (or any command) | Runs that installer command with no window ([options](#in-the-terminal)). |
 | `nebula-setup.exe --extract [--to <dir>]` | Unpacks the installer folder (next to the .exe by default), for running `installer.mjs --cli` yourself. |
 
-### Name, version and icon
-
-Built on Windows, the launcher is compiled for your client app with `csc.exe`, the C# compiler that comes with the .NET Framework on every Windows 10 and 11 machine. The .exe then shows your name, description, version and authors in its file properties, and your icon in Explorer and the taskbar. The icon is `installer.windows.icon`, or the config's `icon`: a PNG of at most 256×256 pixels, or an `.ico`.
-
-Built on macOS or Linux, the .exe uses a prebuilt generic launcher instead (same behaviour, generic icon and details), and the build says so.
+Built on Windows, that launcher is compiled for your client app with `csc.exe`, the C# compiler that comes with the .NET Framework on every Windows 10 and 11 machine, so it has your name and icon. Built on macOS or Linux, it's a prebuilt generic launcher (same behaviour, generic icon and details).
 
 ### Signing
 
@@ -55,21 +79,24 @@ installer: {
 },
 ```
 
-`{file}` is replaced with the .exe's path. Any signing tool works. The launcher finds its bundle with or without a signature.
+`{file}` is replaced with the .exe's path. Any signing tool works, for either kind of .exe.
 
 ### Options
 
 | `installer.windows` | Default | |
 | --- | --- | --- |
 | `exe` | `true` | Build the .exe (it's skipped when `installer.gui` is false). |
+| `nsis` | `true` | Build the wizard when NSIS is found. `false` for the browser launcher, or the path to `makensis`. |
 | `fileName` | `<id>-<version>-setup.exe` | |
 | `icon` | the config's `icon` | PNG (at most 256 px) or `.ico`. |
+| `sidebar` | generated | A 164×314 `.bmp` for the Welcome and Finish pages. |
+| `header` | generated | A 150×57 `.bmp` for the top of the other pages. |
 | `company` | your authors | Shown in the file's properties. |
 | `sign` | none | A signing command containing `{file}`. |
 
 ## What it shows
 
-By default the installer opens a page in the browser, served from the person's own computer, built from your marketing config. It lists the desktop installs it found, with each one's state:
+On macOS and Linux (and from the Windows browser launcher), the installer opens a page in the browser, served from the person's own computer, built from your marketing config. It lists the desktop installs it found, with each one's state:
 
 | State | Shown as | Buttons |
 | --- | --- | --- |

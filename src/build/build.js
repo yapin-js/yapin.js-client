@@ -316,7 +316,7 @@ export default (args) => boot(args, { entry, plugins, themes });
     }
     writeFileSync(
       join(installerDir, 'README.txt'),
-      `${config.name} ${config.version}\r\n\r\nWindows: run ${config.id}-${config.version}-setup.exe instead of this folder.\r\nmacOS: double-click "Install ${safeName}.command".\r\nLinux: run ./install.sh\r\nAnywhere with Node: node installer.mjs (add --cli for the terminal version).\r\n\r\nThe installer opens in your browser. Close the Yapin' desktop app first, or the installer will offer to.\r\nTo remove ${config.name}, run the installer again and choose Uninstall.\r\n`,
+      `${config.name} ${config.version}\r\n\r\nWindows: run ${config.id}-${config.version}-setup.exe instead of this folder.\r\nmacOS: double-click "Install ${safeName}.command".\r\nLinux: run ./install.sh\r\nAnywhere with Node: node installer.mjs (add --cli for the terminal version).\r\n\r\nOn macOS and Linux the installer opens in your browser. Close the Yapin' desktop app first, or the installer will offer to.\r\nTo remove ${config.name}, run the installer again and choose Uninstall.\r\n`,
     );
     if (config.installer.zip !== false) {
       zipFile = join(outDir, `${config.id}-${config.version}-installer.zip`);

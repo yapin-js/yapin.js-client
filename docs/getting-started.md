@@ -110,7 +110,7 @@ npm run build
 
 `dist/` now holds:
 
-- `nebula-1.0.0-setup.exe`: share this with Windows users. They double-click it and the installer opens in their browser.
+- `nebula-1.0.0-setup.exe`: share this with Windows users. They double-click it and a setup wizard walks them through it ([NSIS](installer.md#building-it) must be installed where you build).
 - `nebula-1.0.0-installer.zip`: for macOS (`Install Nebula.command`) and Linux (`./install.sh`).
 - `nebula.user.js`: the web version, for userscript managers ([The web version](web.md)).
 - `payload/`: what gets installed (used by `yapin-client install`).

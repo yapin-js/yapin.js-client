@@ -30,6 +30,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      # NSIS builds the Windows setup wizard; with it, the tests build one (and on Windows, run it).
+      - name: Install NSIS (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) { choco install nsis -y --no-progress }
+      - name: Install NSIS (Linux)
+        if: runner.os == 'Linux' && matrix.node == 24
+        run: sudo apt-get update && sudo apt-get install -y nsis
       - run: npm test
       - name: Browser checks
         if: matrix.os != 'macos-latest' && matrix.node == 24
