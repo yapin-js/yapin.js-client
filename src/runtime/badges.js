@@ -226,30 +226,57 @@ export class BadgeManager {
     );
   }
 
-  /** Starts drawing badges into the configured slots. Returns a stop function. */
+  #slots = new Map();
+  #watching = new Map();
+  #started = false;
+
+  /** Starts drawing badges into the slots. */
   start() {
-    if (this.config.enabled === false) return () => {};
-    const stops = [];
-    for (const [name, slot] of Object.entries(this.slots())) {
-      if (!slot) continue;
-      stops.push(
-        this.client.dom.observe(slot.selector, (element) => {
-          const userId = typeof slot.userId === 'function' ? slot.userId(element) : findUserId(element, slot.userIdProps ?? this.client.host.config.userIdProps);
-          if (!userId) return undefined;
-          const info = { slot: name, config: slot, userId, container: null };
-          this.#rendered.set(element, info);
-          void this.#draw(element, info);
-          return () => {
-            info.container?.remove();
-            this.#rendered.delete(element);
-          };
-        }),
-      );
-    }
-    return () => stops.forEach((stop) => stop());
+    if (this.config.enabled === false) return;
+    this.#started = true;
+    for (const [name, slot] of Object.entries(this.slots())) if (slot) this.#watch(name, slot);
   }
 
-  /** The slots in use: config.badges.slots merged over the defaults. A slot set to false is off. */
+  #watch(name, slot) {
+    this.#watching.get(name)?.();
+    const stop = this.client.dom.observe(slot.selector, (element) => {
+      let userId = null;
+      try {
+        userId = typeof slot.userId === 'function' ? slot.userId(element) : findUserId(element, slot.userIdProps ?? this.client.host.config.userIdProps);
+      } catch (error) {
+        this.client.reportError(tagError(error, { where: `badge slot ${name}` }));
+      }
+      if (!userId) return undefined;
+      const info = { slot: name, config: slot, userId: String(userId), container: null };
+      this.#rendered.set(element, info);
+      void this.#draw(element, info);
+      return () => {
+        info.container?.remove();
+        this.#rendered.delete(element);
+      };
+    });
+    this.#watching.set(name, stop);
+  }
+
+  /**
+   * Adds (or replaces) a slot from code, where `userId` can be a function of the element:
+   * addSlot('members', { selector: '.member-row', position: 'append', userId: (el) => el.dataset.id }).
+   * Returns a function that removes it.
+   */
+  addSlot(name, slot) {
+    if (!slot?.selector) throw new ClientError(ErrorCodes.InvalidDefinition, `Badge slot "${name}" needs a selector`);
+    this.#slots.set(name, { position: 'append', size: 'md', ...slot });
+    if (this.#started) this.#watch(name, this.#slots.get(name));
+    return () => this.removeSlot(name);
+  }
+
+  removeSlot(name) {
+    this.#slots.delete(name);
+    this.#watching.get(name)?.();
+    this.#watching.delete(name);
+  }
+
+  /** The slots in use: the defaults, then config.badges.slots, then addSlot(). A slot set to false is off. */
   slots() {
     const { selectors } = this.client.host;
     const defaults = {
@@ -263,6 +290,7 @@ export class BadgeManager {
       out[key] = value === false ? null : { ...defaults[key], ...(value === true ? {} : value) };
       if (out[key] && !out[key].selector) out[key] = null;
     }
+    for (const [key, slot] of this.#slots) out[key] = slot;
     return out;
   }
 
