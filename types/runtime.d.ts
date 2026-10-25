@@ -181,6 +181,22 @@ export interface AboutPage {
   debugInfo(): string;
 }
 
+// ---------- welcome / what's new ----------
+
+export interface OnboardingScreen {
+  readonly enabled: boolean;
+  /** Shows it right now, regardless of whether it's been seen. */
+  show(): () => void;
+  /** Marks it seen without showing it. */
+  markSeen(): void;
+  /** Clears the seen flag so it's shown again next start (or call show() now). */
+  reset(): void;
+  shouldShow(): boolean;
+}
+
+export interface Welcome extends OnboardingScreen {}
+export interface WhatsNew extends OnboardingScreen {}
+
 // ---------- themes ----------
 
 export interface ThemeVariable {
@@ -647,6 +663,10 @@ export declare class Client {
   readonly userContent: UserContent;
   /** null when the client app turned the About page off. */
   readonly about: AboutPage | null;
+  /** null when the client app turned the welcome screen off. */
+  readonly welcome: Welcome | null;
+  /** null when the client app turned the what's new screen off. */
+  readonly whatsNew: WhatsNew | null;
   reportError(error: unknown, tags?: Record<string, unknown>): void;
   openExternal(url: string): boolean;
   stop(): void;

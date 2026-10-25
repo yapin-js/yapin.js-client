@@ -116,6 +116,35 @@ export interface Config {
         fields?: Record<string, false | string | { label?: string; value?: string; href?: string; copy?: boolean | string; code?: boolean; order?: number; hidden?: boolean }>;
         actions?: Record<string, false>;
       };
+  /** A rounded, animated screen shown the first time the client app runs. `false` turns it off entirely. */
+  welcome?:
+    | false
+    | {
+        enabled?: boolean;
+        /** A built-in icon name ('sparkles', 'rocket', …), SVG markup, or an https/data image URL. */
+        icon?: string;
+        /** `{name}` and `{version}` are replaced. */
+        title?: string;
+        subtitle?: string | null;
+        steps?: Array<{ icon?: string; title: string; description?: string }>;
+        actionLabel?: string;
+        dismissible?: boolean;
+        dismissLabel?: string;
+      };
+  /** Shown once after an update, when `entries` has something for the new version. `false` turns it off entirely. */
+  whatsNew?:
+    | false
+    | {
+        enabled?: boolean;
+        icon?: string;
+        /** `{name}` and `{version}` are replaced. */
+        title?: string;
+        subtitle?: string | null;
+        entries?: Array<{ icon?: string; title: string; description?: string }>;
+        actionLabel?: string;
+        dismissible?: boolean;
+        dismissLabel?: string | null;
+      };
   badges?: {
     enabled?: boolean;
     sources?: Array<{ id: string; url: string; name?: string; refresh?: string | number; priority?: number }>;

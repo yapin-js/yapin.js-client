@@ -382,6 +382,32 @@ test('the about page: defaults, config edits and code edits', async () => {
   assert.equal(disabled.pages.has('about'), false);
 });
 
+test('welcome and what\'s new: seen tracking, entries gate, disabling', async () => {
+  const client = makeClient({ whatsNew: { entries: [{ title: 'New thing' }] } });
+  assert.equal(client.welcome.shouldShow(), true);
+  assert.equal(client.whatsNew.shouldShow(), true);
+  client.welcome.markSeen();
+  assert.equal(client.welcome.shouldShow(), false);
+  client.welcome.reset();
+  assert.equal(client.welcome.shouldShow(), true);
+  client.whatsNew.markSeen();
+  assert.equal(client.whatsNew.shouldShow(), false);
+
+  const noEntries = makeClient({});
+  assert.equal(noEntries.whatsNew.shouldShow(), false);
+
+  const disabled = makeClient({ welcome: false, whatsNew: { enabled: false, entries: [{ title: 'x' }] } });
+  assert.equal(disabled.welcome, null);
+  assert.equal(disabled.whatsNew.shouldShow(), false);
+});
+
+test('client start: a fresh run marks what\'s new seen without showing it', async () => {
+  const client = makeClient({ whatsNew: { entries: [{ title: 'New thing' }] } });
+  assert.equal(client.whatsNew.shouldShow(), true);
+  await client.start();
+  assert.equal(client.whatsNew.shouldShow(), false, 'the first run should not also show what\'s new');
+});
+
 test('client start: entry, bundled plugins and themes, ready event', async () => {
   const client = makeClient({ badges: { sources: [] } });
   const order = [];

@@ -39,6 +39,23 @@ ui.keyValue([{ label: 'Version', value: '1.0.0' }, { label: 'Link', value: ui.li
 ui.icon(svgMarkupOrImageURL)
 ```
 
+## Icons
+
+`ui.icon()`, and anywhere else an `icon` option is accepted (page icons, About fields, `ui.card`, `ui.button`, toasts, dialogs, the [welcome and what's new screens](welcome.md)), takes:
+
+- A built-in name: `'sparkles'`, `'rocket'`, `'puzzle'`, `'palette'`, `'sliders'`, `'info'`, `'check'`, `'x'`, `'alertTriangle'`, `'alertCircle'`, `'chevronRight'`, `'megaphone'`, `'bell'`, `'external'`, `'heart'`, `'shield'`.
+- SVG markup, sanitized (no scripts, event handlers, `foreignObject` or external links).
+- An https or `data:image/…` URL.
+- An element.
+
+```js
+ui.icon('rocket')
+ui.button({ label: 'Install', icon: 'puzzle' })
+client.pages.add({ id: 'tools', title: 'Tools', icon: 'sliders', render })
+```
+
+Every icon is a single colour that follows `currentColor`, so it matches whatever text colour it sits in, in any theme.
+
 ## Controls
 
 ```js
@@ -72,10 +89,10 @@ One control per setting, saved as the person edits, with errors shown under the 
 ## Toasts and dialogs
 
 ```js
-ui.toast('Saved', { type: 'success' });                       // info | success | warning | error
-ui.toast('Update available', { timeout: 0, action: { label: 'Restart', onClick: restart } });
+ui.toast('Saved', { type: 'success' });                       // info | success | warning | error — each type gets a matching icon
+ui.toast('Update available', { timeout: 0, action: { label: 'Restart', onClick: restart }, icon: 'rocket' });
 
-if (await ui.confirm({ title: 'Delete everything?', message: 'This can’t be undone.', confirmLabel: 'Delete', danger: true })) { … }
+if (await ui.confirm({ title: 'Delete everything?', message: 'This can’t be undone.', confirmLabel: 'Delete', danger: true })) { … }  // danger confirms get a warning icon automatically
 
 const name = await ui.prompt({ title: 'Rename', value: current, validate: (v) => v.trim() !== '' || 'Can’t be empty' });
 

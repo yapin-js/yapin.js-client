@@ -120,6 +120,39 @@ settings: {
 
 See [The About page](about-page.md) for every field id.
 
+## `welcome` and `whatsNew`
+
+A rounded, animated screen shown the first time the client app runs (`welcome`), and once after an update when there's something to say about it (`whatsNew`). Both are off with `enabled: false` or `welcome: false` / `whatsNew: false`, and both can be replayed at any time with `client.welcome.show()` / `client.whatsNew.show()`.
+
+| Option | Default | |
+| --- | --- | --- |
+| `enabled` | `true` | |
+| `icon` | `sparkles` / `rocket` | A built-in name, SVG markup, or an https/data image URL. See [UI kit](ui.md#icons). |
+| `title` | `Welcome to {name}` / `What's new in {name} {version}` | `{name}` and `{version}` are replaced. |
+| `subtitle` | none | A line under the title. |
+| `steps` (welcome) / `entries` (whatsNew) | `[]` | `{ icon, title, description }` rows. `whatsNew` only shows once it has at least one entry. |
+| `actionLabel` | `Get started` / `Got it` | The primary button. |
+| `dismissible` | `true` | `false` removes the Escape/backdrop/Skip ways out, leaving only the primary button. |
+| `dismissLabel` | `Skip` / none | The secondary button, when dismissible. |
+
+```js
+welcome: {
+  title: 'Welcome to {name}',
+  subtitle: "Here's what you get out of the box.",
+  steps: [
+    { icon: 'puzzle', title: 'Plugins', description: 'Turn features on and off from Settings.' },
+    { icon: 'palette', title: 'Themes', description: 'Apply a theme or write your own CSS.' },
+  ],
+},
+whatsNew: {
+  entries: [
+    { icon: 'sparkles', title: 'New in 1.2.0', description: 'A redesigned Settings page.' },
+  ],
+},
+```
+
+See [Welcome and what's new](welcome.md).
+
 ## `badges`
 
 | Option | Default | |

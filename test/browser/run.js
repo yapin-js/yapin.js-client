@@ -51,7 +51,19 @@ const manifest = {
   build: { mode: 'production', time: new Date().toISOString() },
   git: { commit: 'abcdef1234567', shortCommit: 'abcdef1', branch: 'main', remote: 'github.com/x/y', remoteURL: 'https://github.com/x/y', commitURL: 'https://github.com/x/y/commit/abcdef1234567' },
   links: { website: 'https://example.com' },
-  config: { origins: ['null', 'file://'], plugins: {}, themes: {}, pages: {}, about: {}, badges: {}, api: {}, host: {}, runtime: {} },
+  config: {
+    origins: ['null', 'file://'],
+    plugins: {},
+    themes: {},
+    pages: {},
+    about: {},
+    welcome: { steps: [{ icon: 'puzzle', title: 'Step one', description: 'Do a thing' }] },
+    whatsNew: { entries: [{ icon: 'sparkles', title: 'New thing' }] },
+    badges: {},
+    api: {},
+    host: {},
+    runtime: {},
+  },
 };
 
 const html = `<!doctype html><html data-theme="dark"><head><meta charset="utf-8"><style>
@@ -81,6 +93,10 @@ const results = {};
 (async () => {
   try {
     await client.ready;
+    // the welcome screen would otherwise cover the page on this first run; mark it (and what's new) seen
+    // so the rest of this test can click through the settings menu undisturbed.
+    client.welcome.markSeen();
+    client.whatsNew.markSeen();
     await sleep(50);
     const nav = document.querySelector('nav.settings-nav');
     results.navLabels = [...nav.querySelectorAll('.settings-nav-label')].map((l) => l.textContent);
@@ -126,6 +142,24 @@ const results = {};
     results.badges = [...document.querySelectorAll('#profile .yc-badge')].map((b) => b.getAttribute('aria-label'));
     client.ui.toast('Hello from the test', { type: 'success', timeout: 0 });
     results.toast = document.querySelector('.yc-toast')?.textContent;
+    results.toastHasIcon = !!document.querySelector('.yc-toast .yc-icon svg');
+
+    client.welcome.show();
+    await sleep(30);
+    results.welcomeTitle = document.querySelector('.yc-onboard-title')?.textContent;
+    results.welcomeStep = document.querySelector('.yc-onboard-row-title')?.textContent;
+    results.welcomeHasIcon = !!document.querySelector('.yc-onboard-hero-icon svg');
+    document.querySelector('.yc-onboard-actions button:last-child').click();
+    await sleep(250);
+    results.welcomeClosed = !document.querySelector('.yc-onboard');
+
+    client.whatsNew.show();
+    await sleep(30);
+    results.whatsNewTitle = document.querySelector('.yc-onboard-title')?.textContent;
+    document.querySelector('.yc-onboard-close').click();
+    await sleep(250);
+    results.whatsNewClosed = !document.querySelector('.yc-onboard');
+
     document.querySelector('.modal').remove();
     await sleep(30);
     results.cleanedUp = !document.querySelector('[data-yc-nav]');
@@ -171,6 +205,13 @@ const expect = {
   customPage: (v) => v === 'Custom',
   badges: (v) => JSON.stringify(v) === JSON.stringify(['T']),
   toast: (v) => typeof v === 'string' && v.includes('Hello from the test'),
+  toastHasIcon: (v) => v === true,
+  welcomeTitle: (v) => v === 'Welcome to Browser Test',
+  welcomeStep: (v) => v === 'Step one',
+  welcomeHasIcon: (v) => v === true,
+  welcomeClosed: (v) => v === true,
+  whatsNewTitle: (v) => v === "What's new in Browser Test 9.9.9",
+  whatsNewClosed: (v) => v === true,
   cleanedUp: (v) => v === true,
   errors: (v) => Array.isArray(v) && v.length === 0,
 };

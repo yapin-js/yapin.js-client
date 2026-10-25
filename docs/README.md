@@ -19,6 +19,7 @@
 | [Themes](themes.md) | Theme files, variables, base styles, custom CSS |
 | [Pages](pages.md) | Adding pages to Yapin’s settings menu |
 | [The About page](about-page.md) | Editing, extending and removing it |
+| [Welcome and what's new](welcome.md) | The first-run and update screens: editing, disabling, replaying |
 | [Badges](badges.md) | Badge providers, the JSON format, where badges appear |
 | [API access](api.md) | Services, the allowlist, secrets |
 | [UI kit](ui.md) | Native-looking controls, toasts and dialogs |
