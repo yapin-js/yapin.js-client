@@ -114,6 +114,9 @@ export const defaults = Object.freeze({
       icon: null,
       company: null,
       sign: null,
+      nsis: true,
+      sidebar: null,
+      header: null,
     },
   },
 });

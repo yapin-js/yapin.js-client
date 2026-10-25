@@ -153,6 +153,12 @@ export interface Config {
       company?: string | null;
       /** A signing command run on the finished .exe, with {file} replaced: 'signtool sign /fd sha256 /a {file}'. */
       sign?: string | null;
+      /** Build a setup wizard with NSIS when makensis is found (default true), false for the browser launcher, or makensis's path. */
+      nsis?: boolean | string;
+      /** A 164×314 .bmp for the wizard's Welcome and Finish pages; default: the accent colour with the logo. */
+      sidebar?: string | null;
+      /** A 150×57 .bmp for the top of the wizard's other pages; default: the logo on white. */
+      header?: string | null;
     };
   };
 }

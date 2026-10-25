@@ -154,6 +154,14 @@ export function validateConfig(input, { root = process.cwd(), file = null } = {}
   }
   if (config.icon) config.icon = resolve(root, config.icon);
   if (config.installer.windows?.icon) config.installer.windows.icon = resolve(root, config.installer.windows.icon);
+  if (typeof config.installer.windows?.nsis === 'string') config.installer.windows.nsis = resolve(root, config.installer.windows.nsis);
+  for (const [key, size] of [['sidebar', '164×314'], ['header', '150×57']]) {
+    const file = config.installer.windows?.[key];
+    if (!file) continue;
+    config.installer.windows[key] = resolve(root, file);
+    if (!/\.bmp$/i.test(file)) problems.push(`installer.windows.${key} must be a .bmp (${size} pixels)`);
+    else if (!existsSync(config.installer.windows[key])) problems.push(`installer.windows.${key} ${config.installer.windows[key]} doesn't exist`);
+  }
   if (config.installer.windows?.sign && (typeof config.installer.windows.sign !== 'string' || !config.installer.windows.sign.includes('{file}'))) problems.push('installer.windows.sign must be a command containing {file}, like: signtool sign /fd sha256 /a {file}');
   if (!['leave', 'relax'].includes(config.desktop.csp)) problems.push('desktop.csp must be "leave" or "relax"');
   if (!['default', 'minimal', 'showcase'].includes(config.installer.preset)) problems.push('installer.preset must be "default", "minimal" or "showcase"');
