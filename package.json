@@ -41,7 +41,8 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "test:browser": "node test/browser/run.js"
+    "test:browser": "node test/browser/run.js",
+    "build:launcher": "node scripts/build-launcher.js"
   },
   "keywords": [
     "yapin",

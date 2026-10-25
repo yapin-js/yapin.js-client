@@ -1,10 +1,14 @@
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, dirname, extname, isAbsolute, join, relative, sep } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { pack } from './pack.js';
 import { readGitInfo } from './git.js';
 import { zipDirectory } from './zip.js';
+import { compileLauncher, createSetupExe, findCsc, PREBUILT_LAUNCHER, signFile } from './windows.js';
+import { defaultTarget } from '../installer/paths.js';
+import { deepMerge } from '../runtime/util.js';
 import { apiVersion, version as frameworkVersion } from '../shared/constants.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -98,29 +102,9 @@ export function installerConfig(config, manifest) {
   };
 }
 
-function launchers(name) {
-  const cmd = `@echo off
-setlocal
-title ${name.replace(/[&|<>^%]/g, '')} installer
-set "HERE=%~dp0"
-set "APP=%LOCALAPPDATA%\\Programs\\yapper-desktop\\Yapper.exe"
-if not exist "%APP%" set "APP=%PROGRAMFILES%\\Yapper\\Yapper.exe"
-if exist "%APP%" (
-  set "ELECTRON_RUN_AS_NODE=1"
-  "%APP%" "%HERE%installer.mjs" %*
-  goto done
-)
-where node >nul 2>nul
-if %ERRORLEVEL%==0 (
-  node "%HERE%installer.mjs" %*
-  goto done
-)
-echo Couldn't find the Yapin' desktop app. Install it from https://www.yapin.gg first.
-pause
-:done
-endlocal
-`;
-  const sh = `#!/bin/sh
+/** The macOS and Linux launcher: runs the installer with the desktop app's own Node, or node. */
+function launcherScript() {
+  return `#!/bin/sh
 # Runs the installer with the desktop app's own Node, or with node if it's installed.
 HERE="$(cd "$(dirname "$0")" && pwd)"
 for APP in "/Applications/Yapper.app/Contents/MacOS/Yapper" "$HOME/Applications/Yapper.app/Contents/MacOS/Yapper" "/opt/Yapper/yapper-desktop" "/opt/yapper-desktop/yapper-desktop" "/usr/lib/yapper-desktop/yapper-desktop"; do
@@ -134,7 +118,47 @@ fi
 echo "Couldn't find the Yapin' desktop app. Install it from https://www.yapin.gg first."
 exit 1
 `;
-  return { cmd: cmd.replace(/\n/g, '\r\n'), sh };
+}
+
+/**
+ * The Windows installer: one .exe with the installer folder inside. On Windows the launcher is compiled
+ * for this client app (its name, version and icon); elsewhere the prebuilt generic one is used.
+ */
+function buildSetupExe(config, { installerDir, outDir }) {
+  const windows = config.installer.windows ?? {};
+  const file = join(outDir, windows.fileName ?? `${config.id}-${config.version}-setup.exe`);
+  let launcher = PREBUILT_LAUNCHER;
+  let warning = null;
+  const work = mkdtempSync(join(tmpdir(), 'yc-setup-'));
+  try {
+    if (findCsc()) {
+      const icon = windows.icon ?? config.icon ?? null;
+      launcher = compileLauncher({
+        out: join(work, 'launcher.exe'),
+        name: config.name,
+        version: config.version,
+        description: config.description,
+        company: windows.company ?? config.authors?.map((a) => a.name).join(', ') ?? '',
+        icon: icon && /\.(png|ico)$/i.test(icon) ? icon : null,
+      });
+    } else {
+      warning = 'Built the Windows .exe with the generic launcher (no csc.exe here), so it has no custom icon or file details. Build on Windows for those.';
+    }
+    const target = deepMerge(structuredClone(defaultTarget), config.installer.target ?? {});
+    const exeName = target.executable?.win32 ?? 'Yapper.exe';
+    const exe = (target.locations?.win32 ?? []).map((location) => `${location.replace(/[\\/]+$/, '')}\\${exeName}`);
+    createSetupExe({
+      launcher,
+      installerDir,
+      out: file,
+      meta: { id: config.id, name: config.name, version: config.version, exe: exe.join('|') },
+      skip: (rel) => /\.(sh|command)$/.test(rel),
+    });
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+  if (windows.sign) signFile(windows.sign, file);
+  return { file, warning };
 }
 
 function userscript(config, manifest, runtime) {
@@ -177,7 +201,8 @@ function prepareOutDir(dir, root) {
  * Builds a client app into `config.outDir`:
  *   payload/            what gets installed: manifest.json, runtime.js, preload.cjs, shim.cjs
  *   installer/<id>/     the branded installer: launchers, installer.mjs, installer.json, payload/
- *   <id>-<version>-installer.zip
+ *   <id>-<version>-setup.exe  the Windows installer (one file)
+ *   <id>-<version>-installer.zip  the same for macOS and Linux (and anyone who prefers a folder)
  *   <id>.user.js        the web version, for userscript managers
  */
 export async function build(config, { root, mode = 'production', onStep = () => {}, installer = true } = {}) {
@@ -260,6 +285,7 @@ export default (args) => boot(args, { entry, plugins, themes });
 
   let installerDir = null;
   let zipFile = null;
+  let exeFile = null;
   if (installer) {
     onStep('Building the installer');
     installerDir = join(outDir, 'installer', config.id);
@@ -268,9 +294,8 @@ export default (args) => boot(args, { entry, plugins, themes });
     writeFileSync(join(installerDir, 'installer.mjs'), installerBundle.code);
     writeFileSync(join(installerDir, 'installer.json'), JSON.stringify(installerConfig(config, manifest), null, 2));
     cpSync(payloadDir, join(installerDir, 'payload'), { recursive: true });
-    const { cmd, sh } = launchers(config.name);
+    const sh = launcherScript();
     const safeName = config.name.replace(/[^\w .-]+/g, '').trim() || config.id;
-    writeFileSync(join(installerDir, `Install ${safeName}.cmd`), cmd);
     writeFileSync(join(installerDir, 'install.sh'), sh);
     writeFileSync(join(installerDir, `Install ${safeName}.command`), sh);
     for (const file of ['install.sh', `Install ${safeName}.command`]) {
@@ -282,16 +307,23 @@ export default (args) => boot(args, { entry, plugins, themes });
     }
     writeFileSync(
       join(installerDir, 'README.txt'),
-      `${config.name} ${config.version}\r\n\r\nWindows: double-click "Install ${safeName}.cmd".\r\nmacOS: double-click "Install ${safeName}.command".\r\nLinux: run ./install.sh\r\n\r\nThe installer opens in your browser. Close the Yapin' desktop app first, or the installer will offer to.\r\nTo remove ${config.name}, run the installer again and choose Uninstall.\r\n`,
+      `${config.name} ${config.version}\r\n\r\nWindows: run ${config.id}-${config.version}-setup.exe instead of this folder.\r\nmacOS: double-click "Install ${safeName}.command".\r\nLinux: run ./install.sh\r\nAnywhere with Node: node installer.mjs (add --cli for the terminal version).\r\n\r\nThe installer opens in your browser. Close the Yapin' desktop app first, or the installer will offer to.\r\nTo remove ${config.name}, run the installer again and choose Uninstall.\r\n`,
     );
     if (config.installer.zip !== false) {
       zipFile = join(outDir, `${config.id}-${config.version}-installer.zip`);
       zipDirectory(installerDir, zipFile, { prefix: `${config.id}-installer` });
     }
+    const windows = config.installer.windows ?? {};
+    if (windows.exe !== false && config.installer.gui !== false) {
+      onStep('Building the Windows setup .exe');
+      const built = buildSetupExe(config, { installerDir, outDir });
+      exeFile = built.file;
+      if (built.warning) warnings.push(built.warning);
+    }
   }
 
   writeFileSync(join(outDir, 'build.json'), JSON.stringify({ id: config.id, version: config.version, mode, time: manifest.build.time, plugins: pluginFiles.map((f) => toPosix(relative(root, f))), themes: themeFiles.map((f) => toPosix(relative(root, f))), runtimeBytes: runtime.length, hash: bundled.hash }, null, 2));
-  return { outDir, payloadDir, installerDir, zipFile, userscriptFile, manifest, plugins: pluginFiles, themes: themeFiles, files: bundled.files, warnings, ms: Date.now() - started };
+  return { outDir, payloadDir, installerDir, zipFile, exeFile, userscriptFile, manifest, plugins: pluginFiles, themes: themeFiles, files: bundled.files, warnings, ms: Date.now() - started };
 }
 
 function camel(id) {

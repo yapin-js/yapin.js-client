@@ -25,6 +25,7 @@ Commands:
 
 Options:
   --cli          Use the terminal instead of the browser
+  --gui          Use the browser even without a terminal
   --yes, -y      Answer yes to every question
   --close        Close the desktop app without asking
   --path <dir>   The desktop app's folder, if it isn't found on its own
@@ -39,6 +40,7 @@ async function main() {
     allowPositionals: true,
     options: {
       cli: { type: 'boolean' },
+      gui: { type: 'boolean' },
       yes: { type: 'boolean', short: 'y' },
       close: { type: 'boolean' },
       purge: { type: 'boolean' },
@@ -57,7 +59,8 @@ async function main() {
   const command = positionals[0];
   const options = { yes: values.yes, close: values.close, purge: values.purge, index: values.index, launch: values['no-launch'] ? false : undefined };
 
-  if (values.cli || command || installer.gui === false || !process.stdout.isTTY) {
+  // The Windows setup .exe passes --gui: it has no terminal, but the page doesn't need one.
+  if (values.cli || command || installer.gui === false || (!process.stdout.isTTY && !values.gui)) {
     return runCli({ installer, operations, command, options });
   }
 

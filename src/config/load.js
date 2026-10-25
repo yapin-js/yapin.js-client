@@ -153,6 +153,8 @@ export function validateConfig(input, { root = process.cwd(), file = null } = {}
     if (!existsSync(config.themes.css)) problems.push(`themes.css ${config.themes.css} doesn't exist`);
   }
   if (config.icon) config.icon = resolve(root, config.icon);
+  if (config.installer.windows?.icon) config.installer.windows.icon = resolve(root, config.installer.windows.icon);
+  if (config.installer.windows?.sign && (typeof config.installer.windows.sign !== 'string' || !config.installer.windows.sign.includes('{file}'))) problems.push('installer.windows.sign must be a command containing {file}, like: signtool sign /fd sha256 /a {file}');
   if (!['leave', 'relax'].includes(config.desktop.csp)) problems.push('desktop.csp must be "leave" or "relax"');
   if (!['default', 'minimal', 'showcase'].includes(config.installer.preset)) problems.push('installer.preset must be "default", "minimal" or "showcase"');
   if (!['ask', 'always', 'never'].includes(config.installer.closeApp)) problems.push('installer.closeApp must be "ask", "always" or "never"');

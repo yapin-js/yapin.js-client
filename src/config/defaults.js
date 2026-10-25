@@ -108,5 +108,12 @@ export const defaults = Object.freeze({
     launchAfter: true,
     zip: true,
     gui: true,
+    windows: {
+      exe: true,
+      fileName: null,
+      icon: null,
+      company: null,
+      sign: null,
+    },
   },
 });
