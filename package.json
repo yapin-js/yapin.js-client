@@ -1,0 +1,57 @@
+{
+  "name": "yapin.js-client",
+  "version": "0.1.0",
+  "description": "A zero-dependency framework for building Yapin’ client mods: plugins, themes, settings pages, badges, API access and a branded installer.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yapin-js/yapin.js-client.git"
+  },
+  "homepage": "https://github.com/yapin-js/yapin.js-client#readme",
+  "bugs": {
+    "url": "https://github.com/yapin-js/yapin.js-client/issues"
+  },
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./types/index.d.ts",
+  "bin": {
+    "yapin-client": "./bin/yapin-client.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./runtime": {
+      "types": "./types/runtime.d.ts",
+      "default": "./src/runtime/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "src",
+    "templates",
+    "types",
+    "docs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:browser": "node test/browser/run.js"
+  },
+  "keywords": [
+    "yapin",
+    "yapper",
+    "client-mod",
+    "plugins",
+    "themes",
+    "electron",
+    "framework"
+  ],
+  "license": "MIT",
+  "sideEffects": false
+}
