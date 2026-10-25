@@ -1,5 +1,5 @@
 /** The framework version. Kept in step with package.json (a test checks it). */
-export const version = '0.1.2';
+export const version = '0.1.3';
 
 /**
  * The plugin API version. Plugins declare the one they were written for (`apiVersion`), and the

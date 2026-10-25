@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- **Installer**: fixed a crash in the Windows setup wizard when the target desktop app is already installed. The wizard runs the installer through the desktop app's own Node (`ELECTRON_RUN_AS_NODE`), which means the installer's own process shares the app's executable name; closing the app before install used to kill every process with that name, including the installer itself, mid-operation ("The installer stopped with an error", with no further detail). Closing the app is now done by PID, always excluding the installer's own process.
+
 ## 0.1.2
 
 - **Runtime**: a rounded, animated welcome screen for a client app's first run, and a what's new screen shown once after an update with something to say. Both are entirely optional (`welcome: false` / `whatsNew: false`), editable from the config (icon, title, subtitle, steps/entries, labels), and replayable any time with `client.welcome.show()` / `client.whatsNew.show()`. A matching button is added to the About page automatically.
