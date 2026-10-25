@@ -130,13 +130,14 @@ export function createBundle(files) {
 /** Reads a bundle back (from a setup .exe or a bare bundle). The same search the launcher does. */
 export function readBundle(data) {
   let end = data.length;
-  if (data.readUInt16LE(0) === 0x5a4d) {
+  if (data.length > 0x40 && data.readUInt16LE(0) === 0x5a4d) {
     const pe = data.readInt32LE(0x3c);
-    const magic = data.readUInt16LE(pe + 24);
-    const entry = pe + 24 + (magic === 0x20b ? 112 : 96) + 32;
-    const certOffset = data.readUInt32LE(entry);
-    const certSize = data.readUInt32LE(entry + 4);
-    if (certSize > 0 && certOffset > 0 && certOffset <= data.length) end = certOffset;
+    const entry = pe + 24 + (pe + 26 <= data.length && data.readUInt16LE(pe + 24) === 0x20b ? 112 : 96) + 32;
+    if (pe > 0 && entry + 8 <= data.length) {
+      const certOffset = data.readUInt32LE(entry);
+      const certSize = data.readUInt32LE(entry + 4);
+      if (certSize > 0 && certOffset > 0 && certOffset <= data.length) end = certOffset;
+    }
   }
   for (let trailer = end - 24; trailer >= Math.max(0, end - 40); trailer--) {
     if (!data.subarray(trailer + 8, trailer + 24).equals(MAGIC)) continue;

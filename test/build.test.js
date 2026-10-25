@@ -9,6 +9,7 @@ import { build } from '../src/build/build.js';
 import { readGitInfo, remoteToURL, commitURL } from '../src/build/git.js';
 import { renderPage } from '../src/installer/page.js';
 import { version } from '../src/shared/constants.js';
+import { readBundle } from '../src/build/windows.js';
 
 const FIXTURE = fileURLToPath(new URL('./fixtures/sample', import.meta.url));
 const PACKAGE = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
@@ -62,7 +63,7 @@ test('build: payload, installer, zip, userscript; the runtime boots', async () =
   const { config, root } = await loadConfig({ cwd: dir });
   const result = await build(config, { root });
   assert.deepEqual(result.plugins.map((p) => p.replace(/\\/g, '/').split('/plugins/')[1]), ['folder-plugin/index.js', 'single.js']);
-  for (const file of ['payload/manifest.json', 'payload/runtime.js', 'payload/preload.cjs', 'payload/shim.cjs', 'sample-client.user.js', 'sample-client-1.2.3-installer.zip', 'installer/sample-client/installer.mjs', 'installer/sample-client/installer.json', 'installer/sample-client/install.sh', 'installer/sample-client/Install Sample Client.cmd']) {
+  for (const file of ['payload/manifest.json', 'payload/runtime.js', 'payload/preload.cjs', 'payload/shim.cjs', 'sample-client.user.js', 'sample-client-1.2.3-installer.zip', 'installer/sample-client/installer.mjs', 'installer/sample-client/installer.json', 'installer/sample-client/install.sh', 'installer/sample-client/Install Sample Client.command', 'sample-client-1.2.3-setup.exe']) {
     assert.ok(existsSync(join(result.outDir, file)), file);
   }
   const manifest = JSON.parse(readFileSync(join(result.payloadDir, 'manifest.json'), 'utf8'));
@@ -78,6 +79,11 @@ test('build: payload, installer, zip, userscript; the runtime boots', async () =
   const html = renderPage(installer, { nonce: 'x' });
   assert.match(html, /Sample &lt;Client&gt;/);
   assert.match(html, /What’s new/);
+  assert.ok(!existsSync(join(result.installerDir, 'Install Sample Client.cmd')), 'no .cmd any more');
+  const bundle = readBundle(readFileSync(result.exeFile));
+  assert.ok(bundle['installer.mjs'] && bundle['payload/runtime.js'] && bundle['installer.json']);
+  assert.ok(!bundle['install.sh'], 'the .exe leaves out the macOS and Linux launchers');
+  assert.match(bundle['__meta.txt'].toString(), /^id=sample-client\nname=Sample Client\nversion=1\.2\.3\nexe=.*Yapper\.exe/);
 
   const runtime = readFileSync(join(result.payloadDir, 'runtime.js'), 'utf8');
   const client = (0, eval)(runtime)().default({ manifest, environment: {} });
