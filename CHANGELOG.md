@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.4
 
 - **About page**: a cleaner, more compact layout: a header card (logo tile, name, version tag with a copy icon, description), a row of buttons with icons, and the other sections as small cards in a grid, with links as chips. Each section's look is its `layout` (`rows`, `chips` or `header`), changeable from the config or with `client.about.section(id, { layout })`; `about.logo` sets the header tile, actions take an `icon`, and `client.about.sections()` lists the sections. The Plugins and Themes pages get nav icons by default.
 
