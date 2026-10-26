@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.6
 
 - **Security**: installing a plugin now asks the person who they are trusting, not just whether to go ahead. The dialog shows the name, version, authors (linked where the header gives a link), description, the link it came from and the size, and **Install** stays disabled until they tick "I trust *Ada* and understand this plugin can see and change anything I do in Yapin’". They can choose to remember that they trust those authors, which pre-ticks the box next time and nothing more. Themes keep the lighter dialog, without the tick.
 - **Security**: a built-in **Security** page (`pages.security`): allow installing from links or not, ask before every install, remember trusted authors or not, the list of authors they've trusted (each with *Forget*), and everything they've installed with where it came from and when.
