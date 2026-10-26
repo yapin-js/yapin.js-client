@@ -38,6 +38,7 @@ const client = getClient();   // null before startup
 | `api`, `secrets` | [API access](api.md). |
 | `ui` | [The UI kit](ui.md). |
 | `userContent` | Installing and removing plugins and themes the person adds: `install(kind, { url })`, `uninstall(kind, id)`, `openFolder(kind)`, `allowed(kind)`. |
+| `security` | What may be installed and who the person trusts: `trustsAuthors(authors)`, `trustAuthors(authors)`, `trustedAuthors()`, `forgetAuthor(name)`, `installs()`, and their own `settings`. See [Security](security.md#what-people-install-themselves). |
 | `host` | What the framework knows about Yapin’s page ([below](#host)). |
 | `dom` | `observe(selector, fn)` and `waitFor(selector, { timeout })` ([below](#watching-the-page)). |
 | `styles` | `add(css, { id, order })` → `{ update(css), remove() }`. Plugins should use `ctx.css`, which cleans up. |
@@ -70,6 +71,7 @@ off();
 | `plugin:error`, `plugin:crash` | plugin id, error |
 | `theme:add`, `theme:update`, `theme:remove`, `theme:enable`, `theme:disable`, `theme:install`, `theme:uninstall` | theme id |
 | `badges:update` | user id, or null for everyone |
+| `security:authors` | the authors the person trusts, after a change |
 
 You can emit your own events too. Plugins listen with `ctx.on(…)` or the `events` field, and those listeners go away when the plugin stops. A listener that throws is reported and doesn't stop the others.
 

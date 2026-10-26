@@ -134,6 +134,32 @@ const results = {};
     results.themeEnabled = client.themes.isEnabled('blue');
     results.adoptedSheets = document.adoptedStyleSheets.length;
 
+    // Installing a plugin: the dialog says what it is and who wrote it, and Install stays disabled
+    // until the person ticks that they trust the authors.
+    const asking = client.userContent.install('plugins', { text: '/**\\n * @id gifted\\n * @name Gifted\\n * @version 1.0.0\\n * @author Ada <https://ada.dev>\\n */\\nexport default { start() {} };' });
+    await sleep(40);
+    const dialog = document.querySelector('.yc-dialog');
+    results.installTitle = dialog?.querySelector('h3')?.textContent;
+    results.installRows = [...dialog.querySelectorAll('.yc-kv dt')].map((d) => d.textContent);
+    results.installAuthorLink = dialog.querySelector('.yc-kv a')?.getAttribute('href');
+    const installButtons = [...dialog.querySelectorAll('.yc-dialog-actions button')];
+    const gateRow = dialog.querySelector('.yc-gate:not(.yc-soft)');
+    results.installGateText = gateRow?.textContent;
+    results.installRememberText = dialog.querySelector('.yc-gate.yc-soft')?.textContent;
+    results.installGatedUntilTicked = installButtons[installButtons.length - 1].disabled === true;
+    gateRow.querySelector('.yc-check').click();
+    results.installEnabledAfterTick = installButtons[installButtons.length - 1].disabled === false;
+    installButtons[0].click();
+    results.installCancelled = (await asking) === null;
+    results.installNotInstalled = !client.plugins.has('gifted');
+
+    nav.querySelector('[data-yc-page-id=security]').click();
+    await sleep(30);
+    const securityPage = document.querySelector('section.settings-main[data-yc-page]');
+    results.securityHeading = securityPage?.querySelector('h2')?.textContent;
+    results.securitySections = [...securityPage.querySelectorAll('.yc-section-title')].map((s) => s.textContent);
+    results.securitySwitches = securityPage.querySelectorAll('.yc-form .switch').length;
+
     document.getElementById('host-account').click();
     await sleep(30);
     results.restoredHost = document.getElementById('host-main').style.display === '' && !document.querySelector('section.settings-main[data-yc-page]');
@@ -190,7 +216,7 @@ if (screenshotArg > 0) {
 
 const expect = {
   navLabels: (v) => JSON.stringify(v) === JSON.stringify(['User settings', 'App settings', 'Browser Test']),
-  navItems: (v) => JSON.stringify(v) === JSON.stringify(['About', 'Custom page', 'Plugins', 'Themes']),
+  navItems: (v) => JSON.stringify(v) === JSON.stringify(['About', 'Custom page', 'Plugins', 'Themes', 'Security']),
   hostHidden: (v) => v === true,
   hostActiveCleared: (v) => v === true,
   ourActive: (v) => v === true,
@@ -207,6 +233,18 @@ const expect = {
   switchSaved: (v) => v === true,
   themeEnabled: (v) => v === true,
   adoptedSheets: (v) => v >= 3,
+  installTitle: (v) => v === 'Install plugin “Gifted”?',
+  installRows: (v) => Array.isArray(v) && JSON.stringify(v) === JSON.stringify(['Name', 'Version', 'By', 'Size']),
+  installAuthorLink: (v) => v === 'https://ada.dev/',
+  installGateText: (v) => typeof v === 'string' && v.includes('I trust Ada') && v.includes('anything I do'),
+  installRememberText: (v) => typeof v === 'string' && v.includes('Remember that I trust Ada'),
+  installGatedUntilTicked: (v) => v === true,
+  installEnabledAfterTick: (v) => v === true,
+  installCancelled: (v) => v === true,
+  installNotInstalled: (v) => v === true,
+  securityHeading: (v) => v === 'Security',
+  securitySections: (v) => JSON.stringify(v) === JSON.stringify(['Installing', 'Authors you trust', 'What you have installed']),
+  securitySwitches: (v) => v === 3,
   restoredHost: (v) => v === true,
   hostActiveRestored: (v) => v === true,
   customPage: (v) => v === 'Custom',

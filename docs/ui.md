@@ -93,6 +93,7 @@ ui.button({ label: 'Save', variant: 'primary' | 'ghost' | 'danger', small: true,
 ui.link({ href: 'https://…', label: 'Docs' })
 ui.switch({ checked, onChange: (checked) => {} })
 ui.toggleRow({ label: 'Compact', description: 'Less space', checked, onChange })
+ui.checkRow({ label: 'I understand', description: 'Why it matters', checked, onChange, soft: false })   // a checkbox to agree to something, not a setting
 ui.field({ label: 'Name', description: 'Shown to others', input: ui.textInput({ … }) })
 ui.textInput({ value, placeholder, type: 'text', onInput, onChange })
 ui.textarea({ value, rows: 6, onInput, onChange })
@@ -134,6 +135,19 @@ const choice = await ui.dialog({
 ```
 
 Dialogs close with Escape or a click outside (unless `dismissable: false`) and resolve with `null`. A button's `value` can be a function, which can throw to keep the dialog open (`prompt` uses this for validation).
+
+For something the person has to agree to in as many words, give `dialog` or `confirm` a `gate`: a checkbox under the content that keeps every button but the ghost ones disabled until it's ticked. `footer` goes below it. This is what the plugin install dialog uses:
+
+```js
+await ui.confirm({
+  title: 'Install plugin “Quick React”?',
+  content: details,
+  gate: { label: 'I trust Ada and understand this plugin can see and change anything I do in Yapin’.', description: 'You said you trust Ada before.', checked: false },
+  footer: ui.checkRow({ soft: true, label: 'Remember that I trust Ada', onChange }),
+  confirmLabel: 'Install plugin',
+  danger: true,
+});
+```
 
 ## Framework styles
 

@@ -99,7 +99,7 @@ test('build: payload, installer, zip, userscript; the runtime boots', async () =
   assert.ok(client.themes.has('dark-blue'));
   assert.ok(client.plugins.has('folder-plugin'));
   assert.ok(!client.plugins.has('ignored'));
-  assert.deepEqual(client.pages.list().map((p) => p.id), ['about', 'settings', 'plugins', 'themes']);
+  assert.deepEqual(client.pages.list().map((p) => p.id), ['about', 'settings', 'plugins', 'themes', 'security']);
   client.stop();
 });
 

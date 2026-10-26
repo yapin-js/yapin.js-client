@@ -100,9 +100,12 @@ export declare class UI {
   colorInput(options: { value?: string; disabled?: boolean; onInput?: (value: string) => void; onChange?: (value: string) => void }): HTMLElement;
   listEditor(options: { value?: string[]; placeholder?: string; disabled?: boolean; onChange?: (value: string[]) => void }): HTMLElement;
   keyValue(rows: Array<{ label: string; value: Child }>): HTMLElement;
+  /** A checkbox with a label, for something the person agrees to rather than switches on. */
+  checkRow(options: { label: string; description?: string; checked?: boolean; disabled?: boolean; soft?: boolean; onChange?: (checked: boolean) => void }): HTMLElement;
   toast(message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; timeout?: number; action?: { label: string; onClick: () => void } }): () => void;
-  dialog<T>(options: { title?: string; message?: string; content?: Node; buttons?: Array<{ label: string; variant?: 'primary' | 'ghost' | 'danger'; value: T | (() => T | Promise<T>) }>; dismissable?: boolean }): Promise<T | null>;
-  confirm(options: { title?: string; message?: string; content?: Node; confirmLabel?: string; cancelLabel?: string; danger?: boolean }): Promise<boolean>;
+  /** `gate` is a checkbox the person has to tick before anything but a ghost button works. */
+  dialog<T>(options: { title?: string; message?: string; content?: Node; gate?: { label: string; description?: string | null; checked?: boolean } | null; footer?: Node | null; buttons?: Array<{ label: string; variant?: 'primary' | 'ghost' | 'danger'; value: T | (() => T | Promise<T>) }>; dismissable?: boolean }): Promise<T | null>;
+  confirm(options: { title?: string; message?: string; content?: Node; gate?: { label: string; description?: string | null; checked?: boolean } | null; footer?: Node | null; confirmLabel?: string; cancelLabel?: string; danger?: boolean }): Promise<boolean>;
   prompt(options: { title?: string; message?: string; placeholder?: string; value?: string; confirmLabel?: string; validate?: (value: string) => true | string | Promise<true | string> }): Promise<string | null>;
   /** A form for a Settings object; changes save as they're made. */
   form(settings: Settings, options?: { context?: unknown }): { element: HTMLElement; dispose(): void };
@@ -604,6 +607,53 @@ export declare class PluginManager {
   sourceOf(id: string): string | null;
 }
 
+export interface TrustedAuthor {
+  name: string;
+  url: string | null;
+  /** When the person said they trust them, as an ISO date. */
+  at: string;
+}
+
+export interface InstallRecord {
+  kind: 'plugins' | 'themes';
+  id: string;
+  name: string;
+  url: string | null;
+  host: string | null;
+  authors: string[];
+  trustedAuthors: boolean;
+  at: string;
+}
+
+/** What may be installed, and who the person has said they trust. */
+export interface Security {
+  /** The person's own security settings, shown on the Security page. */
+  readonly settings: Settings;
+  /** Whether they still allow installing from a link. */
+  readonly installFromLinks: boolean;
+  /** Whether a plugin install needs "I trust the authors" ticked. */
+  readonly trustGate: boolean;
+  /** Whether authors they trust are remembered between installs. */
+  readonly remembersAuthors: boolean;
+  shouldConfirm(kind: 'plugins' | 'themes'): boolean;
+  warningFor(kind: 'plugins' | 'themes'): string;
+  /** Authors the client app itself vouches for (`security.trustedAuthors`). */
+  vouchedAuthors(): string[];
+  isVouchedAuthor(name: string): boolean;
+  trustedAuthors(): TrustedAuthor[];
+  isTrustedAuthor(name: string): boolean;
+  /** True when every author given is trusted, and there is at least one. */
+  trustsAuthors(authors: Array<string | { name: string; url?: string }>): boolean;
+  trustedAt(name: string): string | null;
+  trustAuthors(authors: Array<string | { name: string; url?: string }>): TrustedAuthor[];
+  forgetAuthor(name: string): TrustedAuthor[];
+  forgetAuthors(): TrustedAuthor[];
+  recordInstall(kind: 'plugins' | 'themes', id: string, data: { url?: string | null; authors?: Array<string | { name: string; url?: string }>; name?: string | null; trustedAuthors?: boolean }): InstallRecord;
+  installRecord(kind: 'plugins' | 'themes', id: string): InstallRecord | null;
+  installs(): InstallRecord[];
+  forgetInstall(kind: 'plugins' | 'themes', id: string): boolean;
+}
+
 export interface UserContent {
   allowed(kind: 'plugins' | 'themes'): boolean;
   canInstallFromURL(kind: 'plugins' | 'themes'): boolean;
@@ -637,7 +687,7 @@ export interface Emitter {
  * Client events: 'ready', 'error', 'settings:open', 'settings:close', 'page:add', 'page:remove',
  * 'page:open', 'page:close', 'plugin:add' | 'update' | 'remove' | 'enable' | 'disable' | 'start' |
  * 'stop' | 'error' | 'crash' | 'install' | 'uninstall', 'theme:add' | 'update' | 'remove' | 'enable' |
- * 'disable' | 'install' | 'uninstall', 'badges:update'.
+ * 'disable' | 'install' | 'uninstall', 'badges:update', 'security:authors'.
  */
 export declare class Client {
   readonly id: string;
@@ -669,6 +719,8 @@ export declare class Client {
   readonly plugins: PluginManager;
   readonly badges: BadgeManager;
   readonly userContent: UserContent;
+  /** What may be installed, and the authors the person trusts. */
+  readonly security: Security;
   /** null when the client app turned the About page off. */
   readonly about: AboutPage | null;
   /** null when the client app turned the welcome screen off. */

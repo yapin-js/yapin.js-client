@@ -9,6 +9,7 @@ export { definePlugin, PluginContext, PluginManager } from './plugins.js';
 export { getClient } from './boot.js';
 export { Client } from './client.js';
 export { h, svg, UI } from './ui.js';
+export { Security } from './security.js';
 export { Settings, SettingTypes, normalizeSchema } from './settings.js';
 export { ClientError, ApiError, ErrorCodes } from './errors.js';
 export { filters, ModuleFinder } from './modules.js';

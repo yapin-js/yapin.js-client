@@ -8,7 +8,7 @@ import { idPattern } from '../shared/constants.js';
 export const CONFIG_FILES = ['yapin-client.config.js', 'yapin-client.config.mjs', 'yapin-client.config.json'];
 
 /** Sections that reach the running client app, so they must be JSON. */
-const RUNTIME_SECTIONS = ['settings', 'runtime', 'plugins', 'themes', 'icons', 'pages', 'about', 'welcome', 'whatsNew', 'badges', 'api', 'host', 'desktop', 'origins', 'links'];
+const RUNTIME_SECTIONS = ['settings', 'runtime', 'plugins', 'themes', 'security', 'icons', 'pages', 'about', 'welcome', 'whatsNew', 'badges', 'api', 'host', 'desktop', 'origins', 'links'];
 
 export class ConfigError extends Error {
   constructor(problems, file) {
@@ -163,6 +163,17 @@ export function validateConfig(input, { root = process.cwd(), file = null } = {}
     else if (!existsSync(config.installer.windows[key])) problems.push(`installer.windows.${key} ${config.installer.windows[key]} doesn't exist`);
   }
   if (config.installer.windows?.sign && (typeof config.installer.windows.sign !== 'string' || !config.installer.windows.sign.includes('{file}'))) problems.push('installer.windows.sign must be a command containing {file}, like: signtool sign /fd sha256 /a {file}');
+  if (!['always', 'plugins'].includes(config.security.confirmInstall)) problems.push('security.confirmInstall must be "always" or "plugins"');
+  config.security.trustedAuthors = (Array.isArray(config.security.trustedAuthors) ? config.security.trustedAuthors : [config.security.trustedAuthors])
+    .filter(Boolean)
+    .map((author) => (typeof author === 'string' ? { name: author } : author));
+  config.security.trustedAuthors.forEach((author, i) => {
+    if (!author?.name || typeof author.name !== 'string') problems.push(`security.trustedAuthors[${i}] must be a name, or { name, url }`);
+    else if (author.url && !isHttps(author.url)) problems.push(`security.trustedAuthors[${i}].url must be an https link`);
+  });
+  if (config.security.warning !== null && typeof config.security.warning !== 'string' && !isPlainObject(config.security.warning)) {
+    problems.push('security.warning must be a string, or { plugins, themes }');
+  }
   if (!['leave', 'relax'].includes(config.desktop.csp)) problems.push('desktop.csp must be "leave" or "relax"');
   if (!['default', 'minimal', 'showcase'].includes(config.installer.preset)) problems.push('installer.preset must be "default", "minimal" or "showcase"');
   if (!['ask', 'always', 'never'].includes(config.installer.closeApp)) problems.push('installer.closeApp must be "ask", "always" or "never"');

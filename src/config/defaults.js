@@ -2,8 +2,8 @@ import { defaultOrigins } from '../shared/constants.js';
 
 /**
  * Every config option and its default. The config file is merged over this. Options under `plugins`,
- * `themes`, `pages`, `about`, `badges`, `api`, `host`, `settings`, `runtime` and `desktop` reach the
- * running client app, so they must be plain data (no functions); code goes in the entry file.
+ * `themes`, `security`, `pages`, `about`, `badges`, `api`, `host`, `settings`, `runtime` and `desktop`
+ * reach the running client app, so they must be plain data (no functions); code goes in the entry file.
  * docs/configuration.md describes each option.
  */
 export const defaults = Object.freeze({
@@ -52,6 +52,20 @@ export const defaults = Object.freeze({
     },
   },
 
+  security: {
+    // 'always' asks before installing anything the person chose; 'plugins' asks for plugins only
+    // (they can still ask for themes too, on the Security page). Plugins are never installed silently.
+    confirmInstall: 'always',
+    // Make people tick "I trust the authors" before a plugin installs.
+    trustGate: true,
+    // Offer to remember authors they trusted, so the next plugin from the same author starts ticked.
+    rememberAuthors: true,
+    // Authors this client app vouches for, as names or { name, url }. Their plugins start out ticked.
+    trustedAuthors: [],
+    // Your own wording for the install warning: a string, or { plugins, themes }.
+    warning: null,
+  },
+
   icons: {
     // Every .svg in these folders is registered under its file name, so `icons/brand.svg` is `icon: 'brand'`.
     dirs: ['icons'],
@@ -65,6 +79,7 @@ export const defaults = Object.freeze({
     plugins: { title: 'Plugins', order: 10, icon: 'puzzle' },
     themes: { title: 'Themes', order: 20, icon: 'palette' },
     settings: { title: 'Settings', order: 5, icon: 'sliders' },
+    security: { title: 'Security', order: 30, icon: 'shieldCheck' },
   },
 
   about: {

@@ -111,6 +111,20 @@ export interface Config {
     plugins?: false | { title?: string; order?: number; intro?: string; emptyText?: string; icon?: string };
     themes?: false | { title?: string; order?: number; intro?: string; emptyText?: string; icon?: string };
     settings?: false | { title?: string; order?: number };
+    security?: false | { title?: string; order?: number; intro?: string; icon?: string };
+  };
+  /** What people may install themselves, and how hard they have to agree to it first. */
+  security?: {
+    /** 'always' asks before every install; 'plugins' lets people skip the dialog for themes. */
+    confirmInstall?: 'always' | 'plugins';
+    /** Make people tick "I trust the authors" before a plugin installs (default true). */
+    trustGate?: boolean;
+    /** Offer to remember the authors they trusted (default true). */
+    rememberAuthors?: boolean;
+    /** Authors this client app vouches for; their plugins start out ticked. */
+    trustedAuthors?: Array<string | Author>;
+    /** Your own wording for the install warning. */
+    warning?: string | { plugins?: string; themes?: string } | null;
   };
   about?:
     | false

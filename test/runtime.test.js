@@ -329,6 +329,79 @@ test('plugins from source text, with the header filling in metadata', async () =
   await assert.rejects(client.plugins.addSource('export default 42;', { file: 'x.js' }), /doesn't export a plugin/);
 });
 
+test('security: the client app sets the floor, the person can only go stricter', () => {
+  const asked = makeClient();
+  assert.equal(asked.security.shouldConfirm('plugins'), true);
+  assert.equal(asked.security.shouldConfirm('themes'), true);
+  // confirmInstall: 'always' locks the setting on, so turning it off changes nothing.
+  assert.equal(asked.security.settings.state('confirmEveryInstall').disabled, true);
+  asked.security.settings.set('confirmEveryInstall', false);
+  assert.equal(asked.security.shouldConfirm('themes'), true);
+
+  const lenient = makeClient({ security: { confirmInstall: 'plugins' } });
+  assert.equal(lenient.security.settings.state('confirmEveryInstall').disabled, false);
+  assert.equal(lenient.security.shouldConfirm('themes'), true, 'the person is asked until they say otherwise');
+  lenient.security.settings.set('confirmEveryInstall', false);
+  assert.equal(lenient.security.shouldConfirm('themes'), false);
+  assert.equal(lenient.security.shouldConfirm('plugins'), true, 'plugins are always confirmed');
+});
+
+test('security: authors the person trusts, and the ones the client app vouches for', () => {
+  const client = makeClient({ security: { trustedAuthors: [{ name: 'Core Team', url: 'https://example.com' }] } });
+  const { security } = client;
+  assert.equal(security.trustsAuthors([{ name: 'Ada' }]), false);
+  assert.equal(security.trustsAuthors([]), false, 'no author is never trusted');
+  assert.equal(security.trustsAuthors([{ name: 'core team' }]), true, 'vouched for by the client app, whatever the case');
+  assert.equal(security.isVouchedAuthor('Core Team'), true);
+
+  security.trustAuthors([{ name: 'Ada', url: 'https://ada.dev' }, { name: 'Bo' }]);
+  assert.equal(security.trustsAuthors([{ name: 'Ada' }, { name: 'Bo' }]), true);
+  assert.equal(security.trustsAuthors([{ name: 'Ada' }, { name: 'Cy' }]), false, 'one stranger is enough to ask again');
+  assert.deepEqual(security.trustedAuthors().map((a) => a.name), ['Bo', 'Ada']);
+  assert.ok(security.trustedAt('Ada'));
+  // Vouched authors aren't written into the person's own list.
+  security.trustAuthors([{ name: 'Core Team' }]);
+  assert.deepEqual(security.trustedAuthors().map((a) => a.name), ['Bo', 'Ada']);
+
+  security.forgetAuthor('Bo');
+  assert.deepEqual(security.trustedAuthors().map((a) => a.name), ['Ada']);
+  security.settings.set('rememberAuthors', false);
+  assert.deepEqual(security.trustedAuthors(), [], 'turning remembering off forgets what was remembered');
+  assert.equal(security.trustsAuthors([{ name: 'Ada' }]), false);
+  assert.equal(security.trustsAuthors([{ name: 'Core Team' }]), true, 'the client app still vouches');
+
+  const noMemory = makeClient({ security: { rememberAuthors: false } });
+  assert.equal(noMemory.security.remembersAuthors, false);
+  assert.deepEqual(noMemory.security.trustAuthors([{ name: 'Ada' }]), []);
+  assert.equal(noMemory.security.settings.state('rememberAuthors').hidden, true);
+});
+
+test('security: installing notes where it came from, and the person can turn links off', async () => {
+  const client = makeClient();
+  const source = `/**\n * @id gift\n * @name Gift\n * @version 1.0.0\n * @author Ada <https://ada.dev>\n */\nexport default { start() {} };`;
+  assert.equal(client.userContent.canInstallFromURL('plugins'), true);
+
+  assert.equal(await client.userContent.install('plugins', { text: source, confirm: false }), 'gift');
+  const record = client.security.installRecord('plugins', 'gift');
+  assert.equal(record.name, 'Gift');
+  assert.deepEqual(record.authors, ['Ada']);
+  assert.equal(record.url, null);
+  assert.ok(record.at);
+  assert.deepEqual(client.security.installs().map((entry) => entry.id), ['gift']);
+
+  await client.userContent.uninstall('plugins', 'gift');
+  assert.equal(client.security.installRecord('plugins', 'gift'), null);
+
+  client.security.settings.set('installFromLinks', false);
+  assert.equal(client.userContent.canInstallFromURL('plugins'), false);
+  await assert.rejects(client.userContent.install('plugins', { url: 'https://example.com/a.plugin.js' }), /turned off in your security settings/);
+  assert.equal(await client.userContent.install('plugins', { text: source, confirm: false }), 'gift', 'files still work');
+
+  const noLinks = makeClient({ plugins: { user: { install: { url: false } } } });
+  assert.equal(noLinks.userContent.canInstallFromURL('plugins'), false);
+  await assert.rejects(noLinks.userContent.install('plugins', { url: 'https://example.com/a.plugin.js' }), /doesn't allow installing plugins from links/);
+});
+
 test('safe mode starts nothing', async () => {
   const client = makeClient();
   client.safeMode = true;
@@ -432,5 +505,5 @@ test('client start: entry, bundled plugins and themes, ready event', async () =>
   assert.deepEqual(order, ['setup Test', 'plugin', 'ready']);
   assert.equal(client.isReady, true);
   assert.ok(client.themes.has('base'));
-  assert.deepEqual(client.pages.list().map((p) => p.id), ['about', 'plugins', 'themes']);
+  assert.deepEqual(client.pages.list().map((p) => p.id), ['about', 'plugins', 'themes', 'security']);
 });

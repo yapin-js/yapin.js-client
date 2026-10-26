@@ -82,6 +82,20 @@ settings: {
 | `user.install.allowedHosts` | `[]` | Only allow links from these hosts (and their subdomains). Empty means any https host. |
 | `user.install.maxBytes` | `1000000` | |
 
+## `security`
+
+What people may install themselves, and how hard they have to agree to it first. See [Security](security.md#what-people-install-themselves).
+
+| Option | Default | |
+| --- | --- | --- |
+| `confirmInstall` | `always` | `always` asks before every install. `plugins` lets people skip the dialog for themes (plugins are always asked about, whatever this says). |
+| `trustGate` | `true` | A plugin only installs once the person ticks "I trust *the authors*". `false` goes back to a plain confirm. |
+| `rememberAuthors` | `true` | Offer "Remember that I trust *Ada*", so the next plugin from the same author starts out ticked. `false` removes the offer and the list. |
+| `trustedAuthors` | `[]` | Authors your client app vouches for: `['Core Team']` or `[{ name: 'Ada', url: 'https://ada.dev' }]`. Their plugins start out ticked and are tagged on the install dialog. |
+| `warning` | built in | Your own wording for the install warning: a string, or `{ plugins, themes }`. |
+
+The person has their own settings on the Security page, and they can only make these rules stricter: they can turn installing from links off, ask to be shown the dialog for themes too, or stop authors being remembered. Nothing there can turn off the plugin dialog your client app asks for.
+
 ## `themes`
 
 | Option | Default | |
@@ -115,6 +129,7 @@ A name that matches a built-in replaces it. Markup is inlined into the payload a
 | `plugins` | `{ title: 'Plugins', order: 10 }` | The Plugins page; `false` removes it. Also `intro`, `emptyText` and `icon`. |
 | `themes` | `{ title: 'Themes', order: 20 }` | The Themes page; `false` removes it. |
 | `settings` | `{ title: 'Settings', order: 5 }` | Your settings page (only shown when `settings` isn't empty); `false` removes it. |
+| `security` | `{ title: 'Security', order: 30 }` | The Security page (only shown when people can install plugins or themes); `false` removes it. Also `intro` and `icon`. |
 
 ## `about`
 

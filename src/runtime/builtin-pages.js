@@ -136,6 +136,142 @@ export function pluginsPage(client, config = {}) {
   };
 }
 
+function whenText(at) {
+  if (!at) return null;
+  const date = new Date(at);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
+}
+
+/**
+ * The Security page: what the person lets themselves install, the authors they've said they trust,
+ * and where everything they installed came from.
+ */
+export function securityPage(client, config = {}) {
+  return {
+    id: 'security',
+    title: config.title ?? 'Security',
+    order: config.order ?? 30,
+    icon: config.icon ?? 'shieldCheck',
+    render(root, ctx) {
+      const { ui, security } = client;
+      const authorsEl = h('div');
+      const installedEl = h('div');
+
+      const drawAuthors = () => {
+        const vouched = security.vouchedAuthors();
+        const trusted = security.remembersAuthors ? security.trustedAuthors() : [];
+        const rows = [
+          ...vouched.map((name) => ui.card({ title: name, meta: `Trusted by ${client.name}`, actions: [ui.tag('Built in', 'good')] })),
+          ...trusted.map((entry) =>
+            ui.card({
+              title: entry.url ? ui.link({ href: entry.url, label: entry.name }) : entry.name,
+              meta: [whenText(entry.at) && `You trusted them on ${whenText(entry.at)}`].filter(Boolean).join(' · '),
+              actions: [
+                ui.button({
+                  label: 'Forget',
+                  variant: 'ghost',
+                  small: true,
+                  onClick: () => {
+                    security.forgetAuthor(entry.name);
+                    drawAuthors();
+                  },
+                }),
+              ],
+            }),
+          ),
+        ];
+        if (trusted.length > 1) {
+          rows.push(
+            h(
+              'div',
+              { class: 'yc-row', style: { marginTop: '8px' } },
+              ui.button({
+                label: 'Forget every author',
+                variant: 'ghost',
+                small: true,
+                onClick: async () => {
+                  if (await ui.confirm({ title: 'Forget every author you trust?', message: 'The next plugin from any of them asks again.', confirmLabel: 'Forget all', danger: true })) {
+                    security.forgetAuthors();
+                    drawAuthors();
+                  }
+                },
+              }),
+            ),
+          );
+        }
+        authorsEl.replaceChildren(rows.length ? h('div', null, rows) : ui.empty(security.remembersAuthors ? "You haven't said you trust anyone yet." : 'Authors you trust are not remembered.'));
+      };
+
+      const drawInstalled = () => {
+        const items = [
+          ...client.plugins
+            .list({ includeHidden: true })
+            .filter((plugin) => plugin.source === 'user')
+            .map((plugin) => ({ kind: 'plugins', label: 'Plugin', ...plugin })),
+          ...client.themes
+            .list()
+            .filter((theme) => theme.source === 'user')
+            .map((theme) => ({ kind: 'themes', label: 'Theme', ...theme })),
+        ];
+        if (!items.length) {
+          installedEl.replaceChildren(ui.empty("You haven't installed anything yourself."));
+          return;
+        }
+        installedEl.replaceChildren(
+          ...items.map((item) => {
+            const record = security.installRecord(item.kind, item.id);
+            const rows = [
+              { label: 'From', value: record?.url ? ui.link({ href: record.url }) : client.native ? `The ${item.kind} folder` : 'A file you added' },
+              record?.at && whenText(record.at) && { label: 'Installed', value: whenText(record.at) },
+              { label: 'By', value: item.authors?.length ? item.authors.map((author) => author.name).join(', ') : 'Nobody — it names no author' },
+            ].filter(Boolean);
+            return ui.card({
+              title: item.name,
+              meta: [item.label, item.version && `v${item.version}`].filter(Boolean).join(' · '),
+              actions: [
+                ui.button({
+                  label: 'Uninstall',
+                  variant: 'ghost',
+                  small: true,
+                  onClick: async () => {
+                    if (await ui.confirm({ title: `Uninstall ${item.name}?`, message: 'Its settings are removed too.', confirmLabel: 'Uninstall', danger: true })) {
+                      await client.userContent.uninstall(item.kind, item.id);
+                      drawInstalled();
+                    }
+                  },
+                }),
+              ],
+              children: [ui.keyValue(rows)],
+            });
+          }),
+        );
+      };
+
+      const form = ui.form(security.settings);
+      ctx.onDispose(form.dispose);
+      root.append(
+        ui.heading(config.title ?? 'Security'),
+        ui.hint(
+          config.intro ??
+            `Plugins you install yourself are code from other people, running with the same access to Yapin’ as ${client.name}: they can read what you see and act as you. Nothing here can sandbox them, so the only real protection is being careful about whose plugins you install.`,
+        ),
+        ui.section({ title: 'Installing', children: [form.element] }),
+        ui.section({ title: 'Authors you trust', description: 'Ticking "I trust the authors" when you install a plugin can be remembered here.', children: [authorsEl] }),
+        ui.section({ title: 'What you have installed', description: 'Where each plugin and theme you added came from.', children: [installedEl] }),
+      );
+      drawAuthors();
+      drawInstalled();
+      const offs = ['security:authors', 'plugin:install', 'plugin:uninstall', 'plugin:add', 'plugin:remove', 'theme:install', 'theme:uninstall', 'theme:add', 'theme:remove'].map((event) =>
+        client.events.on(event, () => {
+          drawAuthors();
+          drawInstalled();
+        }),
+      );
+      ctx.onDispose(() => offs.forEach((off) => off()));
+    },
+  };
+}
+
 /** The Themes page: list, turn on and off, variables, install, custom CSS. */
 export function themesPage(client, config = {}) {
   return {

@@ -130,6 +130,7 @@ export const baseCSS = `
 .yc-tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:999px;background:var(--bg-active);color:var(--text-muted)}
 .yc-tag.yc-warn{background:color-mix(in srgb,var(--warning,#f5b544) 22%,transparent);color:var(--warning,#f5b544)}
 .yc-tag.yc-danger{background:color-mix(in srgb,var(--danger,#f2555a) 22%,transparent);color:var(--danger,#f2555a)}
+.yc-tag.yc-good{background:color-mix(in srgb,var(--success,#3fcf82) 22%,transparent);color:var(--success,#3fcf82)}
 .yc-error{color:var(--danger,#f2555a);font-size:12.5px;margin-top:4px}
 .yc-empty{color:var(--text-muted);padding:24px 0;text-align:center}
 .yc-field-row{display:flex;gap:8px;align-items:center}
@@ -158,6 +159,14 @@ export const baseCSS = `
 .yc-dialog h3{margin:0 0 8px;font-size:18px}
 .yc-dialog p{margin:0 0 12px;color:var(--text-muted);white-space:pre-wrap}
 .yc-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.yc-dialog-actions button:disabled{opacity:.5;cursor:not-allowed}
+.yc-check{accent-color:var(--accent);width:15px;height:15px;margin:0;flex-shrink:0}
+.yc-gate{display:flex;gap:10px;align-items:flex-start;margin-top:14px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius,10px);background:var(--bg-elev);font-size:13.5px;line-height:1.4;cursor:pointer}
+.yc-gate:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--border))}
+.yc-gate input{margin-top:2px}
+.yc-gate-desc{margin-top:3px;font-size:12.5px;color:var(--text-muted)}
+.yc-gate.yc-soft{border-color:transparent;background:none;padding:6px 2px;margin-top:4px;color:var(--text-muted)}
+.yc-gate.yc-soft:hover{border-color:transparent;color:var(--text)}
 .yc-badges{display:inline-flex;gap:3px;align-items:center;vertical-align:middle;margin-left:4px}
 .yc-badge{display:inline-flex;align-items:center;justify-content:center;border-radius:4px;cursor:default}
 .yc-badge[data-href]{cursor:pointer}
@@ -311,6 +320,25 @@ export class UI {
       attrs: label ? { 'aria-label': label } : undefined,
       onChange: onChange ? (event) => onChange(event.target.checked, event) : undefined,
     });
+  }
+
+  /**
+   * A checkbox with a label next to it, for things the person has to agree to rather than switch on:
+   * "I trust the authors". `soft` makes it a plain row instead of a boxed one.
+   */
+  checkRow({ label, description, checked = false, disabled = false, soft = false, onChange } = {}) {
+    return h(
+      'label',
+      { class: ['yc-gate', soft && 'yc-soft'] },
+      h('input', {
+        type: 'checkbox',
+        class: 'yc-check',
+        checked,
+        disabled,
+        onChange: onChange ? (event) => onChange(event.target.checked, event) : undefined,
+      }),
+      h('div', null, h('div', null, label), description && h('div', { class: ['yc-gate-desc', this.#cls('hint')] }, description)),
+    );
   }
 
   toggleRow({ label, description, checked, disabled, onChange } = {}) {
@@ -479,8 +507,15 @@ export class UI {
     return close;
   }
 
-  /** A modal dialog. Resolves with the value of the button pressed, or null when dismissed. `icon` shows next to the title. */
-  dialog({ title, icon, message, content, buttons = [{ label: 'OK', value: true }], dismissable = true } = {}) {
+  /**
+   * A modal dialog. Resolves with the value of the button pressed, or null when dismissed. `icon`
+   * shows next to the title.
+   *
+   * `gate` ({ label, description, checked }) puts a checkbox under the content and keeps every button
+   * but the ghost ones disabled until it's ticked, for an action the person has to agree to in as many
+   * words before it can happen. `footer` goes below that, for anything that follows from agreeing.
+   */
+  dialog({ title, icon, message, content, gate = null, footer = null, buttons = [{ label: 'OK', value: true }], dismissable = true } = {}) {
     const doc = globalThis.document;
     if (!doc?.body) return Promise.resolve(null);
     return new Promise((resolve) => {
@@ -499,21 +534,29 @@ export class UI {
         }
       };
       const actions = buttons.map((b) => this.button({ label: b.label, variant: b.variant ?? 'primary', onClick: async () => finish(typeof b.value === 'function' ? await b.value() : b.value) }));
+      const gated = gate ? actions.filter((_, i) => buttons[i].variant !== 'ghost') : [];
+      const setGate = (ticked) => {
+        for (const action of gated) action.disabled = !ticked;
+      };
+      const gateRow = gate ? this.checkRow({ ...gate, onChange: setGate }) : null;
+      setGate(Boolean(gate?.checked));
       const head = title && (icon ? h('div', { class: ['yc-dialog-head', buttons.some((b) => b.variant === 'danger') && 'yc-danger'] }, this.icon(icon), h('h3', null, title)) : h('h3', null, title));
-      const dialog = h('div', { class: 'yc-dialog', attrs: { role: 'dialog', 'aria-modal': 'true' } }, head, message && h('p', null, message), content, h('div', { class: 'yc-dialog-actions' }, actions));
+      const dialog = h('div', { class: 'yc-dialog', attrs: { role: 'dialog', 'aria-modal': 'true' } }, head, message && h('p', null, message), content, gateRow, footer, h('div', { class: 'yc-dialog-actions' }, actions));
       const backdrop = h('div', { class: 'yc-backdrop', onMousedown: (event) => event.target === backdrop && dismissable && finish(null) }, dialog);
       doc.addEventListener('keydown', onKey, true);
       doc.body.appendChild(backdrop);
-      actions[actions.length - 1]?.focus();
+      (gateRow?.firstElementChild ?? actions[actions.length - 1])?.focus();
     });
   }
 
-  async confirm({ title = 'Are you sure?', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, icon = danger ? 'alertTriangle' : null, content } = {}) {
+  async confirm({ title = 'Are you sure?', message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false, icon = danger ? 'alertTriangle' : null, content, gate = null, footer = null } = {}) {
     const value = await this.dialog({
       title,
       icon,
       message,
       content,
+      gate,
+      footer,
       buttons: [
         { label: cancelLabel, variant: 'ghost', value: false },
         { label: confirmLabel, variant: danger ? 'danger' : 'primary', value: true },

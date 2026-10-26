@@ -26,14 +26,23 @@ Keep `runtime.exposeGlobal` off in production. It puts the client object on `win
 - Responses are size-limited, and redirects are capped.
 - Plugin and theme downloads (install from link) must be https, are size-limited, and can be limited to certain hosts (`user.install.allowedHosts`).
 
-## User plugins
+## What people install themselves
 
-User plugins are code from strangers, running with full access to the page. The framework can't sandbox them: there is no JavaScript sandbox that a determined plugin can't escape when it shares a page with what it's acting on. So the framework:
+User plugins are code from strangers, running with full access to the page. The framework can't sandbox them: there is no JavaScript sandbox that a determined plugin can't escape when it shares a page with what it's acting on. What's left is making sure nobody installs one by accident, or without knowing whose code they are about to run.
 
-- shows the plugin's name, version, author, source and size, warns plainly, and asks before anything runs;
-- never runs code from a link before the person agrees;
-- lets you turn user plugins off (`plugins.user.enabled: false`), allow files but not links (`install.url: false`), limit hosts (`install.allowedHosts`), and block known-bad ids (`plugins.blocked`);
-- keeps a plugin's failures from taking down the client app.
+**Before anything runs**, the install dialog shows the plugin's name, version, authors (linked, where the header gives a link), description, the link it came from and its size, and says plainly what a plugin can do. The **Install** button stays disabled until the person ticks:
+
+> I trust *Ada* and understand this plugin can see and change anything I do in Yapin'.
+
+That tick is the point: the person has to say who they are trusting, not just dismiss a dialog. Under it, they can choose to remember that they trust those authors, which pre-ticks the box next time (and nothing else — it never skips the dialog). Authors your client app vouches for in `security.trustedAuthors` start out ticked and are tagged as trusted by you.
+
+Themes get the same dialog with a lighter warning and no tick, because a theme is CSS: it can't run code, but it can load images from other sites.
+
+**The Security page** (built in, `pages.security`) is where the person sees and undoes all of it: whether installing from links is allowed at all, whether they're asked every time, the authors they've said they trust (with *Forget*), and everything they've installed — where each one came from and when.
+
+**In your config** you can turn user plugins off (`plugins.user.enabled: false`), allow files but not links (`install.url: false`), limit where links may point (`install.allowedHosts`), block known-bad ids (`plugins.blocked`), reword the warning (`security.warning`), and vouch for authors (`security.trustedAuthors`). See [`security`](configuration.md#security).
+
+The person's own settings can only make your rules stricter, never looser, and a plugin's failures never take the client app down.
 
 If your client app has a plugin directory, make `allowedHosts` point at it, and review what you list there.
 

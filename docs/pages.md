@@ -21,11 +21,11 @@ That's all a page needs: an id, a title, and a `render` function that fills `roo
 
 | Field | | |
 | --- | --- | --- |
-| `id` | required | Lowercase letters, digits and dashes. `about`, `plugins`, `themes` and `settings` are taken by the built-in pages unless you remove them. |
+| `id` | required | Lowercase letters, digits and dashes. `about`, `plugins`, `themes`, `settings` and `security` are taken by the built-in pages unless you remove them. |
 | `title` | required | The nav entry. |
 | `render(root, ctx)` | required | Draws the page. Return a function to run when it closes. |
 | `section` | `'main'` | Which nav label it sits under ([below](#sections)). |
-| `order` | `0` | Lower comes first; equal orders sort by title. The built-in pages use 0 (About), 5 (Settings), 10 (Plugins) and 20 (Themes). |
+| `order` | `0` | Lower comes first; equal orders sort by title. The built-in pages use 0 (About), 5 (Settings), 10 (Plugins), 20 (Themes) and 30 (Security). |
 | `icon` | | SVG markup (cleaned of scripts and links), an https or `data:` image URL, or an element. |
 | `badge` | | A short tag after the title, like `NEW`. |
 | `visible` | `true` | Or a function of the client, checked whenever the menu is drawn. |

@@ -149,7 +149,7 @@ See [Patching Yapin’](patching.md) before patching anything. Yapin’ deploys 
 
 ## User plugins
 
-People can install plugins from the Plugins page (**Install from link**) or, on desktop, by putting a file in the plugins folder (**Open folder** on the Plugins page). Before anything runs, the installer shows the plugin's name, version, author and source, warns that plugins have full access, and asks.
+People can install plugins from the Plugins page (**Install from link**) or, on desktop, by putting a file in the plugins folder (**Open folder** on the Plugins page). Before anything runs, the installer shows the plugin's name, version, authors and source, warns that plugins have full access, and keeps **Install** disabled until the person ticks that they trust those authors. What they trust, and what they've installed, is theirs to review on the [Security page](security.md#what-people-install-themselves).
 
 A user plugin is one ES module file. It can't import other files, but it can import from URLs with `import()`. Give it a metadata header so it can be shown before it's loaded:
 

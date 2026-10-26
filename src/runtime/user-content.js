@@ -1,5 +1,6 @@
 import { ClientError, ErrorCodes, tagError } from './errors.js';
 import { idFromFile, parseMeta } from './meta.js';
+import { listNames } from './security.js';
 import { h } from './ui.js';
 import { idPattern } from '../shared/constants.js';
 
@@ -32,9 +33,12 @@ export class UserContent {
     return this.#kindConfig(kind).enabled !== false;
   }
 
-  /** Whether they may install from a link (and not only by dropping files in the folder). */
+  /**
+   * Whether they may install from a link (and not only by dropping files in the folder). Both the
+   * client app and the person's own security settings have to allow it.
+   */
   canInstallFromURL(kind) {
-    return this.allowed(kind) && this.#kindConfig(kind).install?.url !== false;
+    return this.allowed(kind) && this.#kindConfig(kind).install?.url !== false && this.client.security.installFromLinks;
   }
 
   /** Loads what's installed. `files` is the desktop snapshot: [{ file, source }]. */
@@ -57,13 +61,15 @@ export class UserContent {
   }
 
   /**
-   * Installs from a link or from text. Shows the person what they're installing and asks first.
+   * Installs from a link or from text. Shows the person what they're installing, who wrote it and
+   * where it came from, and asks first — for a plugin, they have to say they trust its authors.
    * Resolves with the id, or null if they said no.
    */
   async install(kind, { url = null, text = null, file = null, confirm = true } = {}) {
     if (!KINDS[kind]) throw new TypeError(`Unknown kind "${kind}"`);
     if (!this.allowed(kind)) throw new ClientError(ErrorCodes.NotAllowed, `${this.client.name} doesn't allow installing ${kind}`);
-    if (url && !this.canInstallFromURL(kind)) throw new ClientError(ErrorCodes.NotAllowed, `${this.client.name} doesn't allow installing ${kind} from links`);
+    if (url && this.#kindConfig(kind).install?.url === false) throw new ClientError(ErrorCodes.NotAllowed, `${this.client.name} doesn't allow installing ${kind} from links`);
+    if (url && !this.client.security.installFromLinks) throw new ClientError(ErrorCodes.NotAllowed, 'Installing from links is turned off in your security settings');
     const install = this.#kindConfig(kind).install ?? {};
     const maxBytes = install.maxBytes ?? (kind === 'plugins' ? 1_000_000 : 2_000_000);
     if (url) text = await this.client.api.download(url, { maxBytes, allowedHosts: install.allowedHosts ?? [] });
@@ -75,36 +81,97 @@ export class UserContent {
     const manager = kind === 'plugins' ? this.client.plugins : this.client.themes;
     const existing = manager.has(id) ? (kind === 'plugins' ? manager.info(id) : manager.list().find((t) => t.id === id)) : null;
     if (existing && existing.source !== 'user') throw new ClientError(ErrorCodes.DuplicateId, `"${id}" is already part of ${this.client.name}`);
-    if (confirm && !(await this.#confirm(kind, { meta, id, url, existing, size: text.length }))) return null;
+    const { security } = this.client;
+    let remember = false;
+    if (confirm && security.shouldConfirm(kind)) {
+      const answer = await this.#ask(kind, { meta, id, url, existing, size: text.length });
+      if (!answer.installed) return null;
+      remember = answer.remember;
+    }
     const fileName = `${id}${KINDS[kind].ext}`;
     await this.#register(kind, text, fileName);
     if (this.client.native) await this.client.native.write(kind, fileName, text);
     else this.webStores[kind].set(id, { file: fileName, source: text, url, installedAt: new Date().toISOString() });
+    if (remember) security.trustAuthors(meta.authors ?? []);
+    security.recordInstall(kind, id, { url, authors: meta.authors ?? [], name: meta.name ?? id, trustedAuthors: security.trustsAuthors(meta.authors ?? []) });
     this.client.events.emit(`${kind === 'plugins' ? 'plugin' : 'theme'}:install`, id);
     return id;
   }
 
-  async #confirm(kind, { meta, id, url, existing, size }) {
-    const { ui } = this.client;
+  /**
+   * The "are you sure?" dialog: what this is, who wrote it, where it came from, and what it will be
+   * able to do. For a plugin the Install button stays disabled until the person ticks that they trust
+   * its authors (`security.trustGate`), because a plugin can do everything they can do.
+   *
+   * → { installed, remember }
+   */
+  async #ask(kind, { meta, id, url, existing, size }) {
+    const { ui, security } = this.client;
     const label = KINDS[kind].label;
+    const name = meta.name ?? id;
+    const authors = meta.authors ?? [];
+    const names = authors.map((author) => author.name).filter(Boolean);
+    const vouched = names.length > 0 && names.every((author) => security.isVouchedAuthor(author));
+    const knownBefore = !vouched && security.trustsAuthors(authors);
     const rows = [
-      { label: 'Name', value: meta.name ?? id },
+      { label: 'Name', value: name },
       meta.version && { label: 'Version', value: meta.version },
-      meta.authors?.length && { label: 'By', value: meta.authors.map((a) => a.name).join(', ') },
+      { label: 'By', value: names.length ? this.#authorsValue(authors, { vouched, knownBefore }) : 'Nobody — this file names no author' },
       meta.description && { label: 'About', value: meta.description },
-      url && { label: 'From', value: url },
+      url && { label: 'From', value: ui.link({ href: url }) },
       { label: 'Size', value: `${Math.max(1, Math.round(size / 1000))} kB` },
     ].filter(Boolean);
-    const warning =
-      kind === 'plugins'
-        ? 'Plugins run with full access to Yapin’ in this window, including your account. Only install plugins from people you trust.'
-        : 'Themes only change how Yapin’ looks, but they can load images from other websites.';
-    return ui.confirm({
-      title: existing ? `Update ${label} "${meta.name ?? id}"?` : `Install ${label} "${meta.name ?? id}"?`,
-      content: h('div', null, ui.keyValue(rows), ui.hint(warning)),
-      confirmLabel: existing ? 'Update' : 'Install',
+
+    let gate = null;
+    if (kind === 'plugins' && security.trustGate) {
+      gate = {
+        label: names.length
+          ? `I trust ${listNames(names)} and understand this plugin can see and change anything I do in Yapin’.`
+          : 'I understand this plugin names no author, and that it can see and change anything I do in Yapin’.',
+        description: vouched
+          ? `${this.client.name} lists ${names.length > 1 ? 'these authors' : 'this author'} as trusted.`
+          : knownBefore
+            ? `You said you trust ${listNames(names)} before.`
+            : null,
+        checked: vouched || knownBefore,
+      };
+    }
+
+    let remember = false;
+    const offerRemember = kind === 'plugins' && security.remembersAuthors && names.length > 0 && !vouched && !knownBefore;
+    const rememberRow = offerRemember
+      ? ui.checkRow({
+          soft: true,
+          label: `Remember that I trust ${listNames(names)}`,
+          onChange: (on) => {
+            remember = on;
+          },
+        })
+      : null;
+
+    const installed = await ui.confirm({
+      title: existing ? `Update ${label} “${name}”?` : `Install ${label} “${name}”?`,
+      content: h('div', null, ui.keyValue(rows), ui.hint(security.warningFor(kind))),
+      gate,
+      footer: rememberRow,
+      confirmLabel: existing ? 'Update' : `Install ${label}`,
+      cancelLabel: 'Cancel',
       danger: kind === 'plugins',
     });
+    return { installed, remember: installed && remember };
+  }
+
+  /** The authors row: names, linked where the header gives a link, with a tag when they're trusted. */
+  #authorsValue(authors, { vouched, knownBefore }) {
+    const { ui } = this.client;
+    const parts = [];
+    authors.forEach((author, index) => {
+      if (index) parts.push(', ');
+      parts.push(author.url ? ui.link({ href: author.url, label: author.name }) : author.name);
+    });
+    if (vouched) parts.push(' ', ui.tag(`Trusted by ${this.client.name}`, 'good'));
+    else if (knownBefore) parts.push(' ', ui.tag('You trusted before'));
+    return h('span', null, parts);
   }
 
   /** Removes an installed plugin or theme, with its saved settings. */
@@ -116,6 +183,7 @@ export class UserContent {
     manager.remove(id);
     if (this.client.native) await this.client.native.remove(kind, info.file);
     else this.webStores[kind].delete(id);
+    this.client.security.forgetInstall(kind, id);
     this.client.events.emit(`${kind === 'plugins' ? 'plugin' : 'theme'}:uninstall`, id);
     return true;
   }

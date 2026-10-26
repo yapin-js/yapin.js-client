@@ -1,7 +1,7 @@
 import { AboutPage } from './about.js';
 import { ApiClient, Secrets } from './api.js';
 import { BadgeManager } from './badges.js';
-import { pluginsPage, themesPage } from './builtin-pages.js';
+import { pluginsPage, securityPage, themesPage } from './builtin-pages.js';
 import { tagError } from './errors.js';
 import { Emitter } from './events.js';
 import { Host } from './host.js';
@@ -12,6 +12,7 @@ import { PageManager } from './pages.js';
 import { Patcher } from './patcher.js';
 import { PluginManager } from './plugins.js';
 import { fiberOf, findProps, findUserId, findValue, propsOf } from './react.js';
+import { Security } from './security.js';
 import { Settings } from './settings.js';
 import { LocalStorageBackend, MemoryBackend, NativeBackend, StorageManager } from './storage.js';
 import { DomWatcher, StyleManager, bodyReady } from './dom.js';
@@ -59,6 +60,7 @@ export class Client {
     this.secrets = new Secrets({ native, store: native ? null : this.storage.namespace('secrets') });
     this.api = new ApiClient({ services: config.api?.services ?? {}, allowedOrigins: config.api?.allowedOrigins ?? [], native, fetch, secrets: this.secrets, logger: this.logger.child('api') });
     this.settings = new Settings(config.settings ?? {}, this.storage.namespace('client'), { owner: this.name, onError: (error) => this.reportError(error) });
+    this.security = new Security(this, config.security ?? {});
     this.pages = new PageManager(this, { section: { label: config.pages?.section ?? this.name }, position: config.pages?.position ?? 'end' });
     this.themes = new ThemeManager(this, { ...config.themes, baseCSS: this.manifest.baseCSS ?? '' });
     this.plugins = new PluginManager(this, config.plugins ?? {}, { loadModule });
@@ -169,6 +171,8 @@ export class Client {
     }
     if (pages.plugins !== false) this.pages.add(pluginsPage(this, pages.plugins ?? {}));
     if (pages.themes !== false) this.pages.add(themesPage(this, pages.themes ?? {}));
+    // Nothing to be careful about when people can't add plugins or themes of their own.
+    if (pages.security !== false && (this.userContent.allowed('plugins') || this.userContent.allowed('themes'))) this.pages.add(securityPage(this, pages.security ?? {}));
     if (pages.settings !== false && Object.keys(this.settings.definitions).length) {
       const options = pages.settings ?? {};
       this.pages.add({

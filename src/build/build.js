@@ -88,6 +88,7 @@ export function runtimeConfig(config, { icons } = {}) {
     runtime: config.runtime,
     plugins,
     themes,
+    security: config.security,
     // Folder icons first, so an inline `icons.set` entry wins on a name clash.
     icons: { ...iconOptions, set: { ...icons, ...set } },
     pages: config.pages,

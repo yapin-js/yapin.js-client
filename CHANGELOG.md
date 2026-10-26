@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Security**: installing a plugin now asks the person who they are trusting, not just whether to go ahead. The dialog shows the name, version, authors (linked where the header gives a link), description, the link it came from and the size, and **Install** stays disabled until they tick "I trust *Ada* and understand this plugin can see and change anything I do in Yapin’". They can choose to remember that they trust those authors, which pre-ticks the box next time and nothing more. Themes keep the lighter dialog, without the tick.
+- **Security**: a built-in **Security** page (`pages.security`): allow installing from links or not, ask before every install, remember trusted authors or not, the list of authors they've trusted (each with *Forget*), and everything they've installed with where it came from and when.
+- **Security**: a new `security` config section — `confirmInstall`, `trustGate`, `rememberAuthors`, `trustedAuthors` (authors your client app vouches for) and `warning` (your own wording). The person's own settings can only make these stricter, never looser.
+- **Runtime**: `client.security` — `trustsAuthors`, `trustAuthors`, `trustedAuthors`, `forgetAuthor`, `installs` and the person's own `settings`.
+- **UI kit**: `ui.checkRow()`, and `gate` / `footer` options on `ui.dialog()` and `ui.confirm()` for an action the person has to agree to in as many words before the buttons work.
+
 ## 0.1.5
 
 - **UI kit**: the built-in icon set is now [Lucide](https://lucide.dev), kept as upstream draws it, replacing the hand-drawn set. The same 18 names work, and Lucide's own spellings work too (`'triangle-alert'` as well as `'alertTriangle'`), in kebab-case or camelCase. Lucide draws at a 2 px stroke; set `stroke-width` on `.yc-icon svg` to re-weight the whole set rather than editing the markup. The ISC and MIT notices are in `LICENSE`.
