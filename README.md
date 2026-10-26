@@ -1,21 +1,37 @@
+<div align="center">
+
 # yapin.js-client
 
-A framework for building client apps for [Yapin’](https://www.yapin.gg): modified versions of the Yapin’ desktop app (and the web app, as a userscript) with your own pages, themes, plugins and badges.
+**A zero-dependency framework for building client apps for [Yapin’](https://www.yapin.gg)** — modified versions of the Yapin’ desktop app (and the web app, as a userscript) with your own pages, themes, plugins and badges.
 
-It's a framework, not a finished client. It provides the plumbing, so your client app only has to describe what makes it different:
+[![npm](https://img.shields.io/npm/v/yapin.js-client?color=cb3837&logo=npm)](https://www.npmjs.com/package/yapin.js-client)
+[![node](https://img.shields.io/badge/node-%3E%3D18.17-5fa04e?logo=node.js&logoColor=white)](https://nodejs.org)
+[![dependencies](https://img.shields.io/badge/dependencies-0-success)](#)
+[![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-- **Plugins.** A full lifecycle with typed settings, dependencies, styles, DOM observers, patches and pages. Everything a plugin registers is undone automatically when it stops, and a plugin that keeps crashing is switched off on its own. Your users can install their own plugins, if you allow it.
-- **Themes.** CSS files with a metadata header. `@var` declarations become colour pickers and sliders in settings. There are also base styles, custom CSS, and themes added from code.
-- **Settings pages.** Add a page to Yapin’s own settings menu with one call. It looks native and leaves Yapin’s React tree untouched.
-- **An About page.** Version, build, git commit and environment, out of the box. Every row can be edited, hidden or removed, and so can the whole page.
-- **Badges.** Next to names on profile cards and messages, from a JSON file, your API, or code. Every badge is sanitised.
-- **API access.** Named services with retries, caching and secrets stored in the operating system's key store. On desktop, requests go through the main process, checked against an allowlist that's fixed at build time.
-- **A branded installer.** A setup wizard on Windows, built with NSIS: one signable `setup.exe` with your logo, icon, name and version, a zip for macOS and Linux. Configured from a JSON file with three presets. It runs on the Node built into the desktop app, so the people installing need nothing else. It handles install, update, repair after desktop updates, and uninstall.
-- **Zero dependencies.** It includes its own bundler, asar reader and writer, zip writer and test suite.
+[Quick start](#-quick-start) · [What a client app looks like](#-what-a-client-app-looks-like) · [Documentation](#-documentation) · [Testing](#-testing)
 
+</div>
+
+---
+
+It's a framework, not a finished client. It provides the plumbing, so your client app only has to describe what makes it different.
+
+| | |
+| --- | --- |
+| 🧩 **Plugins** | A full lifecycle with typed settings, dependencies, styles, DOM observers, patches and pages. Everything a plugin registers is undone automatically when it stops, and a plugin that keeps crashing is switched off on its own. Your users can install their own plugins, if you allow it. |
+| 🎨 **Themes** | CSS files with a metadata header. `@var` declarations become colour pickers and sliders in settings. There are also base styles, custom CSS, and themes added from code. |
+| ⚙️ **Settings pages** | Add a page to Yapin’s own settings menu with one call. It looks native and leaves Yapin’s React tree untouched. |
+| ℹ️ **An About page** | Version, build, git commit and environment, out of the box. Every row can be edited, hidden or removed, and so can the whole page. |
+| 🏷️ **Badges** | Next to names on profile cards and messages, from a JSON file, your API, or code. Every badge is sanitised. |
+| 🔌 **API access** | Named services with retries, caching and secrets stored in the operating system's key store. On desktop, requests go through the main process, checked against an allowlist that's fixed at build time. |
+| 📦 **A branded installer** | A setup wizard on Windows, built with NSIS: one signable `setup.exe` with your logo, icon, name and version, a zip for macOS and Linux. Configured from a JSON file with three presets. It runs on the Node built into the desktop app, so the people installing need nothing else. It handles install, update, repair after desktop updates, and uninstall. |
+| 🪶 **Zero dependencies** | It includes its own bundler, asar reader and writer, zip writer and test suite. |
+
+> [!IMPORTANT]
 > Client apps modify Yapin’. Check Yapin’s terms before you publish one, and make clear that yours is unofficial (the installer says so by default).
 
-## Quick start
+## 🚀 Quick start
 
 ```sh
 npx yapin.js-client init my-client
@@ -35,7 +51,7 @@ npm run dev
 | `dist/<id>.user.js` | The web version, for Tampermonkey or Violentmonkey. |
 | `dist/payload/` | What gets installed. |
 
-## What a client app looks like
+## 📁 What a client app looks like
 
 ```text
 my-client/
@@ -46,8 +62,10 @@ my-client/
   installer/marketing.json   what the installer page says
 ```
 
+<details open>
+<summary><b>src/index.js</b> — pages, About rows and badges</summary>
+
 ```js
-// src/index.js
 export default function setup(client) {
   client.pages.add({
     id: 'changelog',
@@ -63,8 +81,12 @@ export default function setup(client) {
 }
 ```
 
+</details>
+
+<details open>
+<summary><b>plugins/compact.js</b> — a plugin with a setting and styles</summary>
+
 ```js
-// plugins/compact.js
 import { definePlugin } from 'yapin.js-client/runtime';
 
 export default definePlugin({
@@ -76,22 +98,33 @@ export default definePlugin({
 });
 ```
 
-## Documentation
+</details>
 
-Start with [Getting started](docs/getting-started.md), then [How it works](docs/architecture.md). Everything else is listed in [docs/](docs/README.md).
+## 📚 Documentation
 
-## Requirements
+Start with **[Getting started](docs/getting-started.md)**, then **[How it works](docs/architecture.md)**. Everything else is listed in [docs/](docs/README.md).
 
-- Node 18.17 or newer to build. People installing your client app don't need Node.
-- The Yapin’ desktop app (Windows, macOS or Linux), or a userscript manager for the web version.
+| Guide | | Guide | |
+| --- | --- | --- | --- |
+| [Getting started](docs/getting-started.md) | First client app | [Plugins](docs/plugins.md) | Lifecycle and settings |
+| [Configuration](docs/configuration.md) | `yapin-client.config.js` | [Themes](docs/themes.md) | CSS and `@var` |
+| [Architecture](docs/architecture.md) | How it works | [Pages](docs/pages.md) · [UI](docs/ui.md) | Settings pages |
+| [Installer](docs/installer.md) | `setup.exe` and zip | [Badges](docs/badges.md) · [About](docs/about-page.md) | Profile extras |
+| [CLI](docs/cli.md) | `yapin-client` commands | [API](docs/api.md) · [Security](docs/security.md) | Requests and secrets |
+| [Web](docs/web.md) | The userscript build | [Troubleshooting](docs/troubleshooting.md) | When something breaks |
 
-## Testing
+## ✅ Requirements
+
+- **Node 18.17 or newer** to build. People installing your client app don't need Node.
+- **The Yapin’ desktop app** (Windows, macOS or Linux), or a userscript manager for the web version.
+
+## 🧪 Testing
 
 ```sh
 npm test               # offline: bundler, installer, runtime, build
 npm run test:browser   # needs Chrome or Edge: settings pages, badges, forms in a real browser
 ```
 
-## License
+## 📄 License
 
-MIT
+[MIT](LICENSE) · See also [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
