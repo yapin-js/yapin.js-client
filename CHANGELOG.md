@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.5
 
 - **UI kit**: the built-in icon set is now [Lucide](https://lucide.dev), kept as upstream draws it, replacing the hand-drawn set. The same 18 names work, and Lucide's own spellings work too (`'triangle-alert'` as well as `'alertTriangle'`), in kebab-case or camelCase. Lucide draws at a 2 px stroke; set `stroke-width` on `.yc-icon svg` to re-weight the whole set rather than editing the markup. The ISC and MIT notices are in `LICENSE`.
 - **UI kit**: the icon set is a default, not a fixed list: a client app can add its own or replace any built-in. Every `.svg` in `icons.dirs` (default `./icons`) is registered under its file name, so `icons/brand.svg` is `icon: 'brand'`, and `icons.set` takes markup inline. Icons are inlined into the payload at build time, so there's nothing to load. Plugins can add their own at runtime with `client.ui.registerIcons({ … })`, and `client.ui.iconNames()` lists everything available.
