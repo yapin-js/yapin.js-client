@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- **Plugins**: a plugin can now be developed, built and shared on its own, without a client app project around it. `yapin-client plugin init` scaffolds a project with a `yapin-plugin.json` manifest; `plugin build` bundles it into the single `dist/<id>.plugin.js` file people install, generating the metadata header from the manifest so the two can't drift apart; `plugin dev` builds straight into a client app's plugins folder and rebuilds on save, which the desktop app reloads on its own. `plugin check` checks the header, the manifest and the code, including the things a reviewer would otherwise have to catch by hand. See [Developing a plugin](docs/plugin-development.md).
+- **Plugins**: a plugin file can declare what it needs, so a client refuses it cleanly instead of failing partway through `start()`. `@minClientVersion` and `@platforms` are now read from the metadata header — the runtime already honoured both, but only from a definition, which a single-file user plugin has no way to provide.
+- **Plugins**: built plugin files can be signed, and signatures checked, with `plugin keygen`, `plugin build --sign`, `plugin sign` and `plugin verify` (Ed25519). A signature covers the metadata header as well as the code, so the name, version and author a client shows *before* it runs anything are no longer simply whatever the file claims. What the signed bytes are is frozen; see [Developing a plugin](docs/plugin-development.md#what-is-signed-exactly).
+- **Runtime**: how much a plugin is trusted is now recorded on it (`client.plugins.info(id).trust`: `'bundled'`, `'verified'`, `'signed'` or `'unverified'`) and is decided by whatever loaded the plugin. A plugin can no longer describe its own trust: `trust`, `verified`, `signature` and `signer` are stripped from any definition loaded from source.
+- **CLI**: `validate` now tells a file people install on its own (`*.plugin.js`, `*.theme.css`), whose header has to be complete, from one built into a client app, where the same metadata may live in the definition instead. It also stopped asking themes for an `@apiVersion`, which themes have no use for.
+
 ## 0.1.5
 
 - **UI kit**: the built-in icon set is now [Lucide](https://lucide.dev), kept as upstream draws it, replacing the hand-drawn set. The same 18 names work, and Lucide's own spellings work too (`'triangle-alert'` as well as `'alertTriangle'`), in kebab-case or camelCase. Lucide draws at a 2 px stroke; set `stroke-width` on `.yc-icon svg` to re-weight the whole set rather than editing the markup. The ISC and MIT notices are in `LICENSE`.

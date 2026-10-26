@@ -118,6 +118,19 @@ test('building is reproducible and the index entry carries the hash', () => {
   assert.equal(entry.version, '1.2.3');
 });
 
+test('a hash describes the file people download, signature included', () => {
+  const root = sampleProject();
+  const manifest = manifestFor(root, { updateUrl: 'https://demo.example/demo.plugin.js' });
+  const build = buildPlugin(manifest, { root, write: false });
+  const keys = generateKeys();
+  const signed = signText(build.text, { keyId: 'ada', privateKey: keys.privateKey });
+  assert.notEqual(sha256(signed), build.sha256);
+  // The entry a registry holds must hash what is actually served, or verifying a download fails.
+  const entry = indexEntry(manifest, { ...build, text: signed, bytes: Buffer.byteLength(signed), sha256: sha256(signed) });
+  assert.equal(entry.sha256, sha256(signed));
+  assert.equal(entry.bytes, Buffer.byteLength(signed));
+});
+
 test('a plugin file people download must describe itself; one built into a client app need not', () => {
   const header = '/**\n * @id demo\n */\nexport default { id: "demo", name: "Demo" };\n';
   const standalone = checkFile('demo.plugin.js', header);

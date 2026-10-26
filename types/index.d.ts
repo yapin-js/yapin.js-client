@@ -292,3 +292,85 @@ export declare const defaultTarget: Readonly<Required<TargetConfig>>;
 export declare function renderInstallerPage(installer: Record<string, any>, options: { nonce: string }): string;
 export declare const installerStrings: Readonly<Record<string, string>>;
 export declare function parseMeta(source: string): { meta: Record<string, any>; vars: Array<Record<string, any>> };
+export declare function canonicalText(source: string): string;
+export declare function readSignature(source: string): { algorithm: string; keyId: string; value: string; canonical: string } | null;
+
+// --- Developing one plugin (docs/plugin-development.md) -------------------------------------------
+
+export declare const MANIFEST_FILE: 'yapin-plugin.json';
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  description?: string;
+  version: string;
+  authors: Array<string | { name: string; url?: string }>;
+  license?: string;
+  website?: string;
+  apiVersion?: number;
+  minClientVersion?: string;
+  platforms?: Array<'win32' | 'darwin' | 'linux' | 'web'>;
+  tags?: string[];
+  dependencies?: string[];
+  conflicts?: string[];
+  updateUrl?: string;
+  entry?: string;
+  outDir?: string;
+  client?: string;
+}
+
+/** A validated manifest: paths resolved, lists filled in, authors parsed. */
+export interface ResolvedPluginManifest extends PluginManifest {
+  authors: Array<{ name: string; url?: string }>;
+  apiVersion: number;
+  platforms: Array<'win32' | 'darwin' | 'linux' | 'web'>;
+  tags: string[];
+  dependencies: string[];
+  conflicts: string[];
+  entry: string;
+  outDir: string;
+}
+
+export declare class ManifestError extends Error {
+  problems: string[];
+}
+export declare function definePluginManifest(manifest: PluginManifest): PluginManifest;
+export declare function validateManifest(input: Record<string, any>, options?: { root?: string; file?: string | null }): { manifest: ResolvedPluginManifest; warnings: string[] };
+export declare function loadManifest(options?: { cwd?: string; file?: string }): { manifest: ResolvedPluginManifest; root: string; file: string; warnings: string[] };
+
+export interface PluginBuild {
+  file: string;
+  text: string;
+  bytes: number;
+  sha256: string;
+  files: string[];
+}
+export declare function buildPlugin(manifest: ResolvedPluginManifest, options: { root: string; write?: boolean }): PluginBuild;
+export declare function indexEntry(manifest: ResolvedPluginManifest, build: PluginBuild): Record<string, any>;
+/** What `yapin.js-client/runtime` resolves to inside a user plugin. */
+export declare const RUNTIME_SHIM: string;
+export declare const SHIM_EXPORTS: string[];
+
+export interface CheckResult {
+  problems: string[];
+  warnings: string[];
+  meta: Record<string, any>;
+  vars: Array<Record<string, any>>;
+  signature: { algorithm: string; keyId: string; value: string; canonical: string } | null;
+}
+export declare function checkFile(file: string, text?: string, options?: { standalone?: boolean }): CheckResult;
+export declare function checkAgainstManifest(manifest: ResolvedPluginManifest, text: string): string[];
+
+export declare function formatHeader(manifest: ResolvedPluginManifest): string;
+export declare function headerTags(manifest: ResolvedPluginManifest): Array<[string, string | number]>;
+export declare function withSignature(text: string, signature: { algorithm: string; keyId: string; value: string }): string;
+
+export declare const signatureAlgorithm: 'ed25519';
+export declare function generateKeys(): { publicKey: string; privateKey: string };
+export declare function signText(text: string, options: { keyId: string; privateKey: string }): string;
+export declare function verifyText(text: string, keys?: Record<string, string>): { state: 'unsigned' | 'malformed' | 'unknown' | 'valid' | 'tampered'; keyId: string | null };
+
+export declare function pluginsFolder(clientId: string): string;
+export declare function installForDev(manifest: ResolvedPluginManifest, options: { root: string; clientId: string }): PluginBuild & { installed: string; folder: string };
+export declare function uninstallForDev(id: string, clientId: string): boolean;
+export declare function watchPlugin(manifest: ResolvedPluginManifest, options: { root: string; clientId: string; onBuild?: (result: PluginBuild & { installed: string; problems: string[]; warnings: string[] }) => void; onError?: (error: Error) => void; debounce?: number }): () => void;

@@ -19,7 +19,7 @@ It's a framework, not a finished client. It provides the plumbing, so your clien
 
 | | |
 | --- | --- |
-| 🧩 **Plugins** | A full lifecycle with typed settings, dependencies, styles, DOM observers, patches and pages. Everything a plugin registers is undone automatically when it stops, and a plugin that keeps crashing is switched off on its own. Your users can install their own plugins, if you allow it. |
+| 🧩 **Plugins** | A full lifecycle with typed settings, dependencies, styles, DOM observers, patches and pages. Everything a plugin registers is undone automatically when it stops, and a plugin that keeps crashing is switched off on its own. Your users can install their own plugins, if you allow it, and anyone can write one on its own with `yapin-client plugin init` — see [Developing a plugin](docs/plugin-development.md). |
 | 🎨 **Themes** | CSS files with a metadata header. `@var` declarations become colour pickers and sliders in settings. There are also base styles, custom CSS, and themes added from code. |
 | ⚙️ **Settings pages** | Add a page to Yapin’s own settings menu with one call. It looks native and leaves Yapin’s React tree untouched. |
 | ℹ️ **An About page** | Version, build, git commit and environment, out of the box. Every row can be edited, hidden or removed, and so can the whole page. |
@@ -112,6 +112,7 @@ Start with **[Getting started](docs/getting-started.md)**, then **[How it works]
 | [Installer](docs/installer.md) | `setup.exe` and zip | [Badges](docs/badges.md) · [About](docs/about-page.md) | Profile extras |
 | [CLI](docs/cli.md) | `yapin-client` commands | [API](docs/api.md) · [Security](docs/security.md) | Requests and secrets |
 | [Web](docs/web.md) | The userscript build | [Troubleshooting](docs/troubleshooting.md) | When something breaks |
+| [Developing a plugin](docs/plugin-development.md) | Sharing one plugin | [Patching](docs/patching.md) | When Yapin’ changes |
 
 ## ✅ Requirements
 

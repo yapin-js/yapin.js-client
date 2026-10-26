@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildPlugin, indexEntry } from './build.js';
+import { buildPlugin, indexEntry, sha256 } from './build.js';
 import { checkAgainstManifest, checkFile } from './check.js';
 import { describeTarget, installForDev, watchPlugin } from './dev.js';
 import { loadManifest, MANIFEST_FILE } from './manifest.js';
@@ -110,7 +110,8 @@ export const pluginCommands = {
     if (values.sign) {
       const text = signText(build.text, { keyId: keyIdFor(values), privateKey: readKey(values.key, 'sign') });
       writeFileSync(build.file, text);
-      build = { ...build, text };
+      // The hash has to describe the file people download, signature line and all.
+      build = { ...build, text, bytes: Buffer.byteLength(text), sha256: sha256(text) };
       info(`signed with ${keyIdFor(values)}`);
     }
     const { problems, warnings: fileWarnings } = checkFile(build.file, build.text, { standalone: true });
@@ -216,18 +217,34 @@ export const pluginCommands = {
 
   entry(values) {
     const { manifest, root } = loadManifest({ file: values.manifest });
-    const build = buildPlugin(manifest, { root, write: false });
+    // The entry describes the file people will download, so it has to hash the built file itself —
+    // not a fresh unsigned build of it, which would differ by the @signature line.
+    const notes = [];
+    const built = join(manifest.outDir, `${manifest.id}.plugin.js`);
+    let build;
+    if (existsSync(built)) {
+      const text = readFileSync(built, 'utf8');
+      build = { text, bytes: Buffer.byteLength(text), sha256: sha256(text) };
+      const stale = checkAgainstManifest(manifest, text);
+      if (stale.length) notes.push(...stale);
+    } else {
+      build = buildPlugin(manifest, { root, write: false });
+      notes.push(`nothing built yet, so this hashes a fresh unsigned build; run "yapin-client plugin build" first if you sign your releases`);
+    }
     const entry = indexEntry(manifest, build);
+    if (!entry.downloadUrl) notes.push('no updateUrl in the manifest, so the entry has no download link');
     const text = `${JSON.stringify(entry, null, 2)}\n`;
-    if (values.out) {
-      const out = resolve(values.out);
-      mkdirSync(dirname(out), { recursive: true });
-      writeFileSync(out, text);
-      ok(`Wrote ${rel(out)}`);
-      if (!entry.downloadUrl) warn('No updateUrl in the manifest, so the entry has no download link');
+    if (!values.out) {
+      // stdout stays pure JSON so it can be piped; anything to say goes to stderr.
+      for (const note of notes) console.error(style.yellow(`! ${note}`));
+      process.stdout.write(text);
       return;
     }
-    process.stdout.write(text);
+    const out = resolve(values.out);
+    mkdirSync(dirname(out), { recursive: true });
+    writeFileSync(out, text);
+    ok(`Wrote ${rel(out)}`);
+    for (const note of notes) warn(note);
   },
 };
 
