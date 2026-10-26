@@ -8,6 +8,25 @@ import { apiVersion as currentApiVersion, idPattern } from '../shared/constants.
 
 const DEFINITION = Symbol.for('yapin-client.plugin');
 
+/**
+ * Fields a plugin file must never set about itself. Whether a plugin is trusted is decided by the
+ * client that loads it (from a signature it checked, or because the plugin is built in), so these are
+ * stripped from anything loaded from source before the definition is used.
+ */
+const UNTRUSTED_FIELDS = ['trust', 'verified', 'signature', 'signer'];
+
+/** How much a plugin is trusted. Set by the loader, never by the plugin. */
+export const Trust = Object.freeze({
+  /** Built into this client app. */
+  bundled: 'bundled',
+  /** Signed by a key this client app trusts. */
+  verified: 'verified',
+  /** Validly signed, but by a key this client app doesn't know. */
+  signed: 'signed',
+  /** No signature. */
+  unverified: 'unverified',
+});
+
 /** Marks an object as a plugin definition (and gives editors the types). Returns it unchanged. */
 export function definePlugin(definition) {
   if (definition && typeof definition === 'object') Object.defineProperty(definition, DEFINITION, { value: true });
@@ -132,8 +151,8 @@ export class PluginManager {
   }
 
   /** Registers a plugin definition without starting it. */
-  add(definition, { source = 'code', file = null, owner = null, text = null } = {}) {
-    const record = this.#normalize(definition, { source, file, text });
+  add(definition, { source = 'code', file = null, owner = null, text = null, trust = null } = {}) {
+    const record = this.#normalize(definition, { source, file, text, trust });
     const existing = this.#plugins.get(record.id);
     if (existing) {
       if (existing.source !== record.source || source === 'bundled') {
@@ -151,7 +170,7 @@ export class PluginManager {
    * Loads a plugin from source text (an ES module whose default export is the definition, or a
    * function returning it). The metadata header fills in anything the definition leaves out.
    */
-  async addSource(text, { file = null, source = 'user' } = {}) {
+  async addSource(text, { file = null, source = 'user', trust = null } = {}) {
     if (typeof text !== 'string' || !text.trim()) throw new ClientError(ErrorCodes.LoadFailed, `${file ?? 'plugin'} is empty`);
     const { meta } = parseMeta(text);
     let mod;
@@ -165,7 +184,8 @@ export class PluginManager {
     if (!isPlainObject(definition) && !definition?.[DEFINITION]) throw new ClientError(ErrorCodes.InvalidDefinition, `${file ?? 'plugin'} doesn't export a plugin (export default { id, name, start() {} })`);
     const merged = { ...meta, ...definition, id: definition.id ?? meta.id ?? (file ? idFromFile(file) : undefined) };
     delete merged.extra;
-    return this.add(merged, { source, file, text });
+    for (const field of UNTRUSTED_FIELDS) delete merged[field];
+    return this.add(merged, { source, file, text, trust });
   }
 
   remove(id) {
@@ -201,6 +221,7 @@ export class PluginManager {
       tags: r.tags,
       website: r.website,
       source: r.source,
+      trust: r.trust,
       file: r.file,
       required: r.required,
       hidden: r.hidden,
@@ -423,7 +444,7 @@ export class PluginManager {
     record.ctx = null;
   }
 
-  #normalize(def, { source, file, text }) {
+  #normalize(def, { source, file, text, trust = null }) {
     if (!def || typeof def !== 'object') throw new ClientError(ErrorCodes.InvalidDefinition, `${file ?? 'A plugin'} has no definition object`);
     const id = def.id;
     if (!idPattern.test(id ?? '')) throw new ClientError(ErrorCodes.InvalidDefinition, `Plugin id "${id}" must be lowercase letters, digits and dashes${file ? ` (${file})` : ''}`);
@@ -461,6 +482,7 @@ export class PluginManager {
       source,
       file,
       text,
+      trust: trust ?? (source === 'bundled' || source === 'code' ? Trust.bundled : Trust.unverified),
       status: incompatible ? 'incompatible' : 'stopped',
       incompatible,
       error: null,

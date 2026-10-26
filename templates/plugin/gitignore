@@ -1,0 +1,6 @@
+node_modules/
+dist/
+
+# Signing keys never belong in a repository.
+*.key
+plugin-signing-key*

@@ -1,0 +1,14 @@
+{
+  "id": "__ID__",
+  "name": "__NAME__",
+  "description": "",
+  "version": "0.1.0",
+  "authors": ["__AUTHOR__"],
+  "license": "MIT",
+  "apiVersion": __API_VERSION__,
+  "minClientVersion": "__FRAMEWORK_VERSION__",
+  "tags": [],
+  "entry": "src/index.js",
+  "outDir": "dist",
+  "client": "__CLIENT__"
+}

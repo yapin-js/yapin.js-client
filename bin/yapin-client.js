@@ -9,11 +9,10 @@ import { pack } from '../src/build/pack.js';
 import { findInstalls, install, inspect, repair, uninstall } from '../src/installer/patch.js';
 import { closeApp, isRunning, launchApp } from '../src/installer/processes.js';
 import { defaultTarget } from '../src/installer/paths.js';
-import { parseMeta } from '../src/runtime/meta.js';
-import { normalizeSchema } from '../src/runtime/settings.js';
+import { PLUGIN_HELP, pluginCommandNames, pluginCommands } from '../src/plugin-kit/cli.js';
 import { style } from '../src/installer/cli.js';
 import { deepMerge } from '../src/runtime/util.js';
-import { apiVersion, version } from '../src/shared/constants.js';
+import { version } from '../src/shared/constants.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +30,7 @@ Commands:
   status                 Show desktop installs and what's installed in them
   pack <file> [-o out]   Bundle a plugin with its imports into one file
   validate <file>        Check a plugin (.js) or theme (.css) file
+  plugin <command>       Work on a single plugin (init, build, dev, check, sign…)
   doctor                 Check the project and this computer for problems
 
 Options:
@@ -40,7 +40,9 @@ Options:
   --close                Close the desktop app without asking when it's running
   --no-installer         build: skip the installer and zip
   -h, --help             Show this
-  -v, --version          Show the version`;
+  -v, --version          Show the version
+
+Run "yapin-client plugin --help" for the plugin commands.`;
 
 const ok = (text) => console.log(style.green(`✔ ${text}`));
 const warn = (text) => console.log(style.yellow(`! ${text}`));
@@ -219,42 +221,16 @@ const commands = {
     ok(`${relative(process.cwd(), out)} (${result.files.length} files, ${Math.round(result.code.length / 1024)} kB)`);
   },
 
-  async validate(_values, [file]) {
+  async validate(values, [file]) {
     if (!file) throw new Error('Usage: yapin-client validate <plugin.js | theme.css>');
-    const text = readFileSync(resolve(file), 'utf8');
-    const { meta, vars } = parseMeta(text);
-    const problems = [];
-    if (!meta.id) problems.push('no @id in the header (the file name will be used)');
-    else if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(meta.id)) problems.push(`@id "${meta.id}" must be lowercase letters, digits and dashes`);
-    if (!meta.name) problems.push('no @name');
-    if (!meta.version) problems.push('no @version');
-    if (!meta.authors?.length) problems.push('no @author');
-    if (meta.apiVersion && meta.apiVersion > apiVersion) problems.push(`@apiVersion ${meta.apiVersion} is newer than this framework's (${apiVersion})`);
-    if (/\.css$/i.test(file)) {
-      try {
-        const schema = Object.fromEntries(vars.map((v) => [v.variable.replace(/^--/, ''), { ...v, type: v.type === 'color' || v.type === 'number' || v.type === 'slider' || v.type === 'select' || v.type === 'switch' ? v.type : 'text', options: v.options ?? (v.type === 'select' ? [v.default] : undefined) }]));
-        normalizeSchema(schema, file);
-      } catch (error) {
-        problems.push(error.message);
-      }
-      let depth = 0;
-      for (const c of text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '')) {
-        if (c === '{') depth++;
-        if (c === '}') depth--;
-        if (depth < 0) break;
-      }
-      if (depth !== 0) problems.push('unbalanced { } braces');
-    } else {
-      try {
-        pack({ entry: resolve(file), root: dirname(resolve(file)), alias: { 'yapin.js-client/runtime': join(HERE, '..', 'src', 'runtime', 'index.js') } });
-      } catch (error) {
-        problems.push(error.message);
-      }
-    }
-    if (problems.length) {
-      for (const p of problems) warn(p);
-      process.exitCode = 1;
-    } else ok(`${meta.name ?? file} looks good${vars.length ? ` (${vars.length} variables)` : ''}`);
+    pluginCommands.check(values, [file]);
+  },
+
+  async plugin(values, [name, ...rest]) {
+    if (!name || values.help) return console.log(PLUGIN_HELP);
+    const run = pluginCommands[name];
+    if (!run) throw new Error(`Unknown plugin command "${name}". One of: ${pluginCommandNames().join(', ')}`);
+    await run(values, rest);
   },
 
   async doctor(values) {
@@ -302,13 +278,20 @@ async function main() {
       purge: { type: 'boolean' },
       out: { type: 'string', short: 'o' },
       'no-installer': { type: 'boolean' },
+      client: { type: 'string' },
+      manifest: { type: 'string' },
+      author: { type: 'string' },
+      key: { type: 'string' },
+      'key-id': { type: 'string' },
+      sign: { type: 'boolean' },
+      json: { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
       version: { type: 'boolean', short: 'v' },
     },
   });
   if (values.version) return console.log(version);
   const [command, ...rest] = positionals;
-  if (values.help || !command) return console.log(HELP);
+  if (!command || (values.help && command !== 'plugin')) return console.log(HELP);
   const run = commands[command];
   if (!run) throw new Error(`Unknown command "${command}". Run yapin-client --help`);
   await run(values, rest);

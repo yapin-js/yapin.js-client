@@ -69,6 +69,20 @@ npx yapin-client validate midnight.theme.css
 
 Checks a plugin or theme the way the runtime will: the header (`@id`, `@name`, `@version`, `@author`, `@apiVersion`), theme variables, balanced braces in CSS, and that a plugin bundles and compiles. Exits with 1 when there are problems.
 
+A file named `*.plugin.js` or `*.theme.css` is taken to be one people install on its own, so its header has to be complete. Anything else is taken to be built into a client app, where the same things may live in the definition instead, and a thin header is only a warning.
+
+The same check is `yapin-client plugin check <file>`.
+
+## plugin
+
+```sh
+npx yapin-client plugin init my-plugin
+npx yapin-client plugin dev
+npx yapin-client plugin build --sign --key keys/mine.key --key-id ada
+```
+
+Everything for writing and sharing **one** plugin, rather than a whole client app: `init`, `build`, `dev`, `check`, `sign`, `verify`, `keygen` and `entry`. Run `yapin-client plugin --help` for the list, and see [Developing a plugin](plugin-development.md) for the whole workflow.
+
 ## doctor
 
 ```sh
@@ -86,8 +100,14 @@ Checks the config, finds the desktop app, reports its fuses and install state, a
 | `--path <dir>` | Also look for the desktop app here (repeatable). |
 | `--close` | Close the desktop app without asking. |
 | `--purge` | With `uninstall`: delete data too. |
-| `-o, --out <file>` | With `pack`: where to write. |
+| `-o, --out <file>` | With `pack`, `plugin keygen`, `plugin entry`: where to write. |
 | `--no-installer` | With `build`: skip the installer. |
+| `--client <id>` | With `plugin dev`: which client app to install into. |
+| `--manifest <file>` | With `plugin`: the manifest file. |
+| `--key <file｜base64>` | With `plugin sign` / `verify`: the key. |
+| `--key-id <name>` | With `plugin sign`: what to call the key. |
+| `--sign` | With `plugin build`: sign the result. |
+| `--json` | With `plugin check` / `entry`: machine-readable output. |
 | `-h, --help`, `-v, --version` | |
 
 Set `DEBUG=1` to see stack traces.

@@ -245,6 +245,8 @@ export interface ThemeInfo extends Omit<ThemeDefinition, 'css' | 'vars' | 'setti
   id: string;
   name: string;
   source: 'bundled' | 'user' | 'code';
+  /** How much this client trusts the plugin. Decided by the loader, never by the plugin. */
+  trust: Trust;
   file: string | null;
   enabled: boolean;
   hasSettings: boolean;
@@ -517,6 +519,9 @@ export declare function defineTheme<T extends ThemeDefinition>(definition: T): T
 export declare function definePage<T extends PageDefinition>(definition: T): T;
 export declare function defineBadgeProvider<T extends BadgeProvider>(definition: T): T;
 
+export type Trust = 'bundled' | 'verified' | 'signed' | 'unverified';
+export declare const Trust: Readonly<{ bundled: 'bundled'; verified: 'verified'; signed: 'signed'; unverified: 'unverified' }>;
+
 export interface PluginInfo {
   id: string;
   name: string;
@@ -526,6 +531,8 @@ export interface PluginInfo {
   tags: string[];
   website: string | null;
   source: 'bundled' | 'user' | 'code';
+  /** How much this client trusts the plugin. Decided by the loader, never by the plugin. */
+  trust: Trust;
   file: string | null;
   required: boolean;
   hidden: boolean;
@@ -694,3 +701,7 @@ export declare class ApiError extends ClientError {
 export declare const ErrorCodes: Readonly<Record<string, string>>;
 export declare function parseMeta(source: string): { meta: Record<string, any>; vars: ThemeVariable[] };
 export declare function parseVar(text: string): ThemeVariable | null;
+/** The exact bytes a plugin signature covers. Frozen; see docs/plugin-development.md. */
+export declare function canonicalText(source: string): string;
+/** The `@signature <algorithm> <keyId> <base64>` line, or null when there isn't a readable one. */
+export declare function readSignature(source: string): { algorithm: string; keyId: string; value: string; canonical: string } | null;

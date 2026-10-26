@@ -8,13 +8,14 @@
 | [How it works](architecture.md) | The installer, the stub, the main process, the preload and the runtime |
 | [Configuration](configuration.md) | Every option in `yapin-client.config.js` |
 | [The client object](runtime.md) | Everything your entry file and plugins can use |
-| [Command line](cli.md) | `init`, `build`, `dev`, `install`, `pack`, `doctor` and friends |
+| [Command line](cli.md) | `init`, `build`, `dev`, `install`, `pack`, `plugin`, `doctor` and friends |
 
 ## Features
 
 | | |
 | --- | --- |
 | [Plugins](plugins.md) | Writing plugins, their lifecycle, user plugins |
+| [Developing a plugin](plugin-development.md) | Writing and sharing one plugin on its own: `plugin init`, `dev`, `check`, signing |
 | [Settings](settings.md) | Typed settings for plugins, themes and your client app |
 | [Themes](themes.md) | Theme files, variables, base styles, custom CSS |
 | [Pages](pages.md) | Adding pages to Yapin’s settings menu |

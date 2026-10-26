@@ -177,15 +177,39 @@ The default export can also be a function that receives the client and returns t
 
 On desktop, editing a file in the plugins folder reloads that plugin straight away.
 
-To write a user plugin across several files, bundle it into one with:
+The header can also declare what the plugin needs, so a client refuses it cleanly instead of failing
+halfway through `start()`:
+
+```js
+/**
+ * @apiVersion 1
+ * @minClientVersion 0.1.5
+ * @platforms win32, darwin
+ * @dependencies other-plugin
+ * @updateUrl https://ada.dev/quick-react.plugin.js
+ */
+```
+
+One tag is never read from the definition: `@signature`. How much a plugin is trusted is the client's
+decision, never something the plugin says about itself, so `signature`, `verified` and `trust` are
+stripped from anything loaded from source. `client.plugins.info(id).trust` reports what the client
+decided: `'bundled'`, `'verified'`, `'signed'` or `'unverified'`.
+
+To write a user plugin across several files, start a plugin project instead of hand-rolling the
+header — see **[Developing a plugin](plugin-development.md)**:
+
+```sh
+npx yapin-client plugin init my-plugin
+```
+
+That gives you `plugin dev` (build into a client app's plugins folder, rebuild on save),
+`plugin build` (bundle into one file, with the header generated from the manifest), `plugin check`
+and signing.
+
+To bundle a file by hand without a project, or to check one someone sent you:
 
 ```sh
 npx yapin-client pack src/my-plugin.js -o my-plugin.plugin.js
-```
-
-Check a plugin or theme file before sharing it:
-
-```sh
 npx yapin-client validate my-plugin.plugin.js
 ```
 
