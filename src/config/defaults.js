@@ -52,6 +52,13 @@ export const defaults = Object.freeze({
     },
   },
 
+  icons: {
+    // Every .svg in these folders is registered under its file name, so `icons/brand.svg` is `icon: 'brand'`.
+    dirs: ['icons'],
+    // Icons given inline as `{ name: '<svg…>' }`. A name that matches a built-in replaces it.
+    set: {},
+  },
+
   pages: {
     section: null,
     position: 'end',

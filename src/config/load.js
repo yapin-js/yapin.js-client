@@ -8,7 +8,7 @@ import { idPattern } from '../shared/constants.js';
 export const CONFIG_FILES = ['yapin-client.config.js', 'yapin-client.config.mjs', 'yapin-client.config.json'];
 
 /** Sections that reach the running client app, so they must be JSON. */
-const RUNTIME_SECTIONS = ['settings', 'runtime', 'plugins', 'themes', 'pages', 'about', 'welcome', 'whatsNew', 'badges', 'api', 'host', 'desktop', 'origins', 'links'];
+const RUNTIME_SECTIONS = ['settings', 'runtime', 'plugins', 'themes', 'icons', 'pages', 'about', 'welcome', 'whatsNew', 'badges', 'api', 'host', 'desktop', 'origins', 'links'];
 
 export class ConfigError extends Error {
   constructor(problems, file) {
@@ -141,7 +141,7 @@ export function validateConfig(input, { root = process.cwd(), file = null } = {}
   });
   config.api.allowedOrigins = [...allowed];
 
-  for (const kind of ['plugins', 'themes']) {
+  for (const kind of ['plugins', 'themes', 'icons']) {
     config[kind].dirs = (config[kind].dirs ?? []).map((d) => (isAbsolute(d) ? d : resolve(root, d)));
   }
   if (config.entry) {

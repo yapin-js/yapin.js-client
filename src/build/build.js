@@ -54,16 +54,40 @@ export function findThemes(dirs) {
   return out;
 }
 
+/**
+ * Icons in a folder: every `.svg` (not starting with _ or .), registered under its file name, so
+ * `icons/brand.svg` becomes `icon: 'brand'`. The markup is inlined into the payload; `width` and
+ * `height` are dropped because CSS sizes icons, and it is sanitized when drawn.
+ */
+export function findIcons(dirs) {
+  const out = {};
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir).sort()) {
+      if (!/\.svg$/i.test(name) || /^[_.]/.test(name)) continue;
+      const markup = readFileSync(join(dir, name), 'utf8').trim();
+      if (!markup.includes('<svg')) throw new Error(`Icon ${join(dir, name)} is not an SVG`);
+      out[basename(name, extname(name))] = markup
+        .replace(/<svg\b[\s\S]*?>/, (open) => open.replace(/\s+(width|height)="[^"]*"/g, ''))
+        .replace(/>\s+</g, '><');
+    }
+  }
+  return out;
+}
+
 /** The part of the config the running client app gets (plain data, no build paths). */
-export function runtimeConfig(config) {
+export function runtimeConfig(config, { icons } = {}) {
   const { dirs: _pd, ...plugins } = config.plugins;
   const { dirs: _td, css: _css, ...themes } = config.themes;
+  const { dirs: _id, set, ...iconOptions } = config.icons ?? {};
   return {
     origins: config.origins,
     settings: config.settings,
     runtime: config.runtime,
     plugins,
     themes,
+    // Folder icons first, so an inline `icons.set` entry wins on a name clash.
+    icons: { ...iconOptions, set: { ...icons, ...set } },
     pages: config.pages,
     about: config.about,
     welcome: config.welcome,
@@ -223,6 +247,7 @@ export async function build(config, { root, mode = 'production', onStep = () => 
   onStep('Collecting plugins and themes');
   const pluginFiles = findPlugins(config.plugins.dirs);
   const themeFiles = findThemes(config.themes.dirs);
+  const iconFiles = findIcons(config.icons?.dirs ?? []);
   const baseCSS = config.themes.css ? readFileSync(config.themes.css, 'utf8') : '';
 
   const imports = [`import { boot } from ${JSON.stringify(toPosix(join(SRC, 'runtime', 'boot.js')))};`];
@@ -260,7 +285,7 @@ export default (args) => boot(args, { entry, plugins, themes });
     build: { time: new Date().toISOString(), mode },
     git,
     baseCSS,
-    config: runtimeConfig(config),
+    config: runtimeConfig(config, { icons: iconFiles }),
     files: {},
   };
   if (mode === 'development') {

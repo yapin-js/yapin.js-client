@@ -1,5 +1,5 @@
 import { SettingTypes } from './settings.js';
-import { builtinIcon } from '../shared/icons.js';
+import { builtinIcon, ICONS } from '../shared/icons.js';
 import { safeURL, toArray } from './util.js';
 
 /**
@@ -171,13 +171,45 @@ export const baseCSS = `
  */
 export class UI {
   #toastRoot = null;
+  #icons = new Map();
 
-  constructor({ host, openExternal, onError } = {}) {
+  constructor({ host, openExternal, onError, icons } = {}) {
     this.host = host;
     this.openExternal = openExternal ?? ((url) => globalThis.open?.(url, '_blank', 'noopener,noreferrer'));
     this.onError = onError ?? ((error) => console.error(error));
     this.h = h;
     this.svg = svg;
+    if (icons) this.registerIcons(icons);
+  }
+
+  /**
+   * Adds icons to this client app's set, as `{ name: '<svg…>' }`. They can be used by name anywhere an
+   * icon is accepted, exactly like the built-ins, and a name that matches a built-in replaces it, so a
+   * client app can swap the whole look without touching the framework. Markup is sanitized when drawn.
+   *
+   * The build registers `icons.dirs` and `icons.set` from the config automatically; plugins can call
+   * this to add their own. Names are matched case-insensitively in kebab-case or camelCase.
+   */
+  registerIcons(icons) {
+    for (const [name, markup] of Object.entries(icons ?? {})) {
+      if (typeof name !== 'string' || !name) continue;
+      if (typeof markup !== 'string' || !markup.includes('<svg')) {
+        this.onError(new TypeError(`Icon ${JSON.stringify(name)} must be SVG markup`));
+        continue;
+      }
+      this.#icons.set(name.replace(/-([a-z])/g, (_, c) => c.toUpperCase()), markup);
+    }
+    return this;
+  }
+
+  /** Every icon name this client app can use: the built-ins plus any registered ones. */
+  iconNames() {
+    return [...new Set([...Object.keys(ICONS), ...this.#icons.keys()])].sort();
+  }
+
+  /** Looks up an icon name: this client app's own icons first, then the built-ins. */
+  #lookupIcon(name) {
+    return this.#icons.get(name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())) ?? builtinIcon(name);
   }
 
   #cls(...keys) {
@@ -213,11 +245,11 @@ export class UI {
     return h('div', { class: 'yc-empty' }, text);
   }
 
-  /** An icon: a built-in name ('rocket', 'puzzle', …), SVG markup (sanitized), an https/data image URL, or an element. */
+  /** An icon: a name ('rocket', 'puzzle', … or one registered by this client app), SVG markup (sanitized), an https/data image URL, or an element. */
   icon(source) {
     if (!source) return null;
     if (source instanceof Node) return h('span', { class: 'yc-icon' }, source);
-    if (typeof source === 'string' && !source.includes('<') && !/^(https?:|data:)/.test(source)) source = builtinIcon(source) ?? source;
+    if (typeof source === 'string' && !source.includes('<') && !/^(https?:|data:)/.test(source)) source = this.#lookupIcon(source) ?? source;
     const asSvg = svg(source);
     if (asSvg) return h('span', { class: 'yc-icon', attrs: { 'aria-hidden': 'true' } }, asSvg);
     const url = safeURL(source, { protocols: ['https:', 'data:'] });
