@@ -95,6 +95,17 @@ settings: {
 | `customCSS.title`, `customCSS.description` | | Its heading and hint. |
 | `user` | | Like `plugins.user`, with `maxBytes` 2000000. |
 
+## `icons`
+
+Icons your client app adds to the built-in set, usable by name anywhere an `icon` option is accepted. See [ui.md](ui.md#your-own-icons).
+
+| Option | Default | |
+| --- | --- | --- |
+| `dirs` | `['icons']` | Folders with `.svg` icons. Each is registered under its file name, so `icons/brand.svg` is `icon: 'brand'`. Names starting with `_` or `.` are skipped. |
+| `set` | `{}` | Icons given inline as `{ name: '<svg…>' }`. Wins over a folder file of the same name. |
+
+A name that matches a built-in replaces it. Markup is inlined into the payload at build time and sanitized when drawn; draw on a 24×24 `viewBox` with `stroke="currentColor"` and no `width`/`height` on the root `<svg>`.
+
 ## `pages`
 
 | Option | Default | |

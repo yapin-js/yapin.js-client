@@ -84,6 +84,10 @@ export declare class UI {
   tag(text: string, variant?: 'warn' | 'danger'): HTMLElement;
   empty(text: string): HTMLElement;
   icon(source: string | Node): HTMLElement | null;
+  /** Adds icons to this client app's set as `{ name: '<svg…>' }`; a name matching a built-in replaces it. */
+  registerIcons(icons: Record<string, string>): this;
+  /** Every icon name available: the built-ins plus any registered. */
+  iconNames(): string[];
   button(options: { label: string; variant?: 'primary' | 'ghost' | 'danger'; small?: boolean; disabled?: boolean; title?: string; icon?: string; onClick?: (event: MouseEvent) => unknown }): HTMLButtonElement;
   link(options: { href: string; label?: string; title?: string }): HTMLElement;
   switch(options: { checked?: boolean; disabled?: boolean; label?: string; onChange?: (checked: boolean, event: Event) => void }): HTMLInputElement;

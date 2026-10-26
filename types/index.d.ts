@@ -96,6 +96,13 @@ export interface Config {
     customCSS?: { enabled?: boolean; title?: string; description?: string | null };
     user?: UserInstallConfig;
   };
+  /** Icons this client app adds to the built-in set, usable by name anywhere an `icon` is accepted. */
+  icons?: {
+    /** Folders with `.svg` icons; each is registered under its file name (`icons/brand.svg` -> `'brand'`). */
+    dirs?: string[];
+    /** Icons given inline as `{ name: '<svg…>' }`. Wins over a folder file of the same name, and a name matching a built-in replaces it. */
+    set?: Record<string, string>;
+  };
   pages?: {
     /** The nav label above the client app's pages (default: its name). */
     section?: string | null;
@@ -220,6 +227,8 @@ export interface BuildResult {
 export declare function build(config: Record<string, any>, options: { root: string; mode?: 'production' | 'development'; installer?: boolean; onStep?: (step: string) => void }): Promise<BuildResult>;
 export declare function findPlugins(dirs: string[]): string[];
 export declare function findThemes(dirs: string[]): string[];
+/** Every `.svg` in the folders, keyed by file name, with the root `<svg>` size stripped. */
+export declare function findIcons(dirs: string[]): Record<string, string>;
 export declare function runtimeConfig(config: Record<string, any>): Record<string, any>;
 
 export declare function pack(options: {

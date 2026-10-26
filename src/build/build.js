@@ -67,8 +67,10 @@ export function findIcons(dirs) {
       if (!/\.svg$/i.test(name) || /^[_.]/.test(name)) continue;
       const markup = readFileSync(join(dir, name), 'utf8').trim();
       if (!markup.includes('<svg')) throw new Error(`Icon ${join(dir, name)} is not an SVG`);
+      // Exports are pretty-printed; collapse them so the payload stays small. Only the root <svg> loses
+      // width/height: the same attributes on a shape (a <rect>, say) are geometry and must stay.
       out[basename(name, extname(name))] = markup
-        .replace(/<svg\b[\s\S]*?>/, (open) => open.replace(/\s+(width|height)="[^"]*"/g, ''))
+        .replace(/<svg\b[^>]*>/, (open) => open.replace(/\s+(width|height)="[^"]*"/g, '').replace(/\s+/g, ' ').replace(/ (\/?)>$/, '$1>'))
         .replace(/>\s+</g, '><');
     }
   }

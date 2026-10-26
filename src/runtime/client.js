@@ -46,7 +46,7 @@ export class Client {
     this.host = new Host(config.host ?? {}, { win });
     this.dom = new DomWatcher({ onError: (error) => this.reportError(error, { where: 'dom' }) });
     this.styles = new StyleManager(win?.document);
-    this.ui = new UI({ host: this.host, openExternal: (url) => this.openExternal(url), onError: (error) => this.reportError(error, { where: 'ui' }) });
+    this.ui = new UI({ host: this.host, openExternal: (url) => this.openExternal(url), onError: (error) => this.reportError(error, { where: 'ui' }), icons: config.icons?.set });
     this.react = {
       fiberOf,
       propsOf,

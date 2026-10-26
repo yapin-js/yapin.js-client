@@ -22,6 +22,12 @@ export default defineConfig({
     dirs: ['./themes'],
   },
 
+  // Drop .svg files in ./icons to use them by name (icons/brand.svg -> icon: 'brand').
+  // A name matching a built-in replaces it. See docs/ui.md.
+  icons: {
+    dirs: ['./icons'],
+  },
+
   installer: {
     preset: 'default',
     marketing: './installer/marketing.json',
